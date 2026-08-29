@@ -82,7 +82,8 @@ export class App {
       this.sceneManager.cameraRig,
       (isVR) => this.onVRSessionChange(isVR),
       () => {
-        const isDual = this.sceneManager.toggleDualScreenVR();
+        const targetPos = this.navigationController ? this.navigationController.getTargetWorldPosition() : null;
+        const isDual = this.sceneManager.toggleDualScreenVR(targetPos);
         const btn = document.querySelector('#dualVRText');
         if (btn) btn.textContent = isDual ? 'EXIT VR' : 'DUAL SCREEN VR';
       }
@@ -140,7 +141,8 @@ export class App {
       onToggleDualVR: () => {
         this.audioManager.init();
         this.audioManager.resume();
-        const isDual = this.sceneManager.toggleDualScreenVR();
+        const targetPos = this.navigationController.getTargetWorldPosition();
+        const isDual = this.sceneManager.toggleDualScreenVR(targetPos);
         return isDual;
       },
       onToggleTour: () => {
@@ -363,6 +365,10 @@ export class App {
           this.onStageChanged(0);
         } else if (msg.type === 'setParam') {
           this.simParams[msg.key] = msg.value;
+        } else if (msg.type === 'flipVR') {
+          this.sceneManager.flipVR180();
+        } else if (msg.type === 'recenterVR') {
+          this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
         } else if (msg.type === 'switchModule') {
           this.hud.switchModule(msg.moduleId);
         }
@@ -406,6 +412,9 @@ export class App {
         // A = Toggle 10-stage animated visual tour with Stranger Things soundtrack
         const isPlaying = this.tourController.toggleTour();
         this.hud.setTourState(isPlaying);
+      } else if (e.key.toLowerCase() === 'i') {
+        // I = Flip VR 180° orientation
+        this.sceneManager.flipVR180();
       } else if (e.key.toLowerCase() === 'm') {
         const isMuted = this.audioManager.toggleMute();
         const icon = document.querySelector('#audioIcon');
@@ -445,6 +454,13 @@ export class App {
     this.hud.setActiveStage(stageIndex);
     this.scientificPanel.showStage(stageIndex);
     this.vrInfoCard.updateCard(stageIndex);
+
+    // Auto-recenter VR heading towards the active planet
+    if (this.sceneManager.isDualScreenVR) {
+      setTimeout(() => {
+        this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
+      }, 200);
+    }
 
     if (this.remoteRelay) {
       const stages = this.navigationController.stages;

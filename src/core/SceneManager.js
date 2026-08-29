@@ -37,6 +37,7 @@ export class SceneManager {
 
     this.isDualScreenVR = false;
     this.ipd = 0.064; // 64mm interpupillary distance
+    this.headingOffset = 0; // World heading alignment offset so VR always faces directly at target
 
     // 3. WebGLRenderer
     this.renderer = new THREE.WebGLRenderer({
@@ -92,11 +93,54 @@ export class SceneManager {
     }
   }
 
-  toggleDualScreenVR() {
+  getDeviceYaw() {
+    if (!this.hasOrientation) return 0;
+    const alphaRad = THREE.MathUtils.degToRad(this.deviceOrientation.alpha || 0);
+    const betaRad = THREE.MathUtils.degToRad(this.deviceOrientation.beta || 0);
+    const gammaRad = THREE.MathUtils.degToRad(this.deviceOrientation.gamma || 0);
+    const screenOrient = (window.screen && window.screen.orientation) ? (window.screen.orientation.angle || 0) : (window.orientation || 0);
+    const screenOrientRad = THREE.MathUtils.degToRad(screenOrient);
+
+    const q = new THREE.Quaternion();
+    const zee = new THREE.Vector3(0, 0, 1);
+    const euler = new THREE.Euler();
+    const q0 = new THREE.Quaternion();
+    const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+
+    euler.set(betaRad, alphaRad, -gammaRad, 'YXZ');
+    q.setFromEuler(euler);
+    q.multiply(q1);
+    q.multiply(q0.setFromAxisAngle(zee, -screenOrientRad));
+
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(q);
+    return Math.atan2(-fwd.x, -fwd.z);
+  }
+
+  recenterVR(targetLookAt) {
+    if (!targetLookAt) return;
+    const dir = new THREE.Vector3().subVectors(targetLookAt, this.cameraRig.position);
+    dir.y = 0;
+    if (dir.lengthSq() > 0.001) {
+      dir.normalize();
+      const targetYaw = Math.atan2(-dir.x, -dir.z);
+      const currentYaw = this.getDeviceYaw();
+      this.headingOffset = targetYaw - currentYaw;
+      console.log('🎯 VR Recentered towards target');
+    }
+  }
+
+  flipVR180() {
+    this.headingOffset = (this.headingOffset + Math.PI) % (Math.PI * 2);
+    console.log('🔄 VR 180° Flipped');
+  }
+
+  toggleDualScreenVR(targetLookAt) {
     this.isDualScreenVR = !this.isDualScreenVR;
     if (this.isDualScreenVR) {
       this.requestOrientationPermission();
-      // Try fullscreen
+      setTimeout(() => {
+        if (targetLookAt) this.recenterVR(targetLookAt);
+      }, 150);
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
       }
@@ -145,7 +189,7 @@ export class SceneManager {
       // Keep camera rig pure translation so parent transform never inverts gyro head tracking
       this.cameraRig.quaternion.identity();
 
-      // Apply standard W3C DeviceOrientation with Screen Orientation angle compensation
+      // Apply standard W3C DeviceOrientation with Screen Orientation angle compensation & heading alignment
       if (this.hasOrientation) {
         const alphaRad = THREE.MathUtils.degToRad(this.deviceOrientation.alpha || 0);
         const betaRad = THREE.MathUtils.degToRad(this.deviceOrientation.beta || 0);
@@ -196,5 +240,11 @@ export class SceneManager {
     quaternion.setFromEuler(euler);
     quaternion.multiply(q1); // Camera looks out back of device, not top
     quaternion.multiply(q0.setFromAxisAngle(zee, -orient)); // Adjust for device screen rotation (0, 90, 180, 270)
+
+    // Apply calibrated heading offset so looking forward in real world always faces directly at the planet:
+    if (this.headingOffset !== 0) {
+      const qHeading = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.headingOffset);
+      quaternion.premultiply(qHeading);
+    }
   }
 }

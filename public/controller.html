@@ -687,6 +687,12 @@
       } else if (e.key.toLowerCase() === 'a') {
         send({ type: 'tour' });
         showToast('Toggled Cinematic Tour');
+      } else if (e.key.toLowerCase() === 'i') {
+        send({ type: 'flipVR' });
+        showToast('Flipped VR 180°');
+      } else if (e.key.toLowerCase() === 'h') {
+        send({ type: 'recenterVR' });
+        showToast('Recentered VR Target');
       }
     });
 
