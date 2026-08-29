@@ -1,0 +1,20 @@
+{
+  "name": "photosynthesis-webvr-simulation",
+  "version": "1.0.0",
+  "description": "Interactive Photorealistic Photosynthesis WebVR & WebXR Scientific Simulation with Dual-Screen WebSocket PC Controller",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "vite": "^5.4.10",
+    "ws": "^8.21.3"
+  }
+}

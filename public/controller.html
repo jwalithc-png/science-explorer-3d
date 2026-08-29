@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🎮 Science Explorer 3D — Dual-Screen WebSocket Remote Controller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --primary-cyan: #38bdf8;
+      --primary-rose: #f43f5e;
+      --primary-gold: #facc15;
+      --primary-green: #22c55e;
+      --bg-dark: #020617;
+      --panel-bg: rgba(15, 23, 42, 0.92);
+      --panel-border: rgba(255, 255, 255, 0.16);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --mod-color: #38bdf8;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      width: 100vw;
+      max-width: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      user-select: none;
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Status Bar */
+    #status-bar {
+      padding: 12px 24px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    #status-bar.connected { border-color: #22c55e; color: #4ade80; }
+    #status-bar.disconnected { border-color: #ef4444; color: #f87171; }
+
+    .status-right-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-fs {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-fs:hover, .btn-fs:active {
+      background: #38bdf8;
+      color: #020617;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+    }
+
+    /* Module Switcher Tabs */
+    .module-tabs {
+      display: flex;
+      gap: 10px;
+    }
+    .mod-btn {
+      flex: 1;
+      padding: 14px 12px;
+      border-radius: 16px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--panel-border);
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+    .mod-btn.active {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: var(--mod-color);
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+      transform: translateY(-1px);
+    }
+
+    /* Main Arena Layout (2 Columns on Widescreen) */
+    .main-arena {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 900px) {
+      .main-arena {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* GIANT Fullscreen Touch & Drag Trackpad */
+    #trackpad {
+      background: radial-gradient(circle at center, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.98));
+      border: 2.5px dashed rgba(56, 189, 248, 0.5);
+      border-radius: 24px;
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      touch-action: none;
+      box-shadow: inset 0 0 50px rgba(0,0,0,0.7), 0 8px 32px rgba(0,0,0,0.5);
+      position: relative;
+      cursor: grab;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+    #trackpad:active, #trackpad.active {
+      cursor: grabbing;
+      border-color: #38bdf8;
+      border-style: solid;
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.25), rgba(15, 23, 42, 0.98));
+      box-shadow: inset 0 0 60px rgba(56, 189, 248, 0.3), 0 0 30px rgba(56, 189, 248, 0.35);
+    }
+    .trackpad-icon {
+      font-size: 48px;
+      filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.6));
+      pointer-events: none;
+    }
+    .trackpad-hint {
+      font-size: 18px;
+      font-weight: 900;
+      color: #38bdf8;
+      pointer-events: none;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .trackpad-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    /* Touch cursor ripple */
+    #touch-cursor {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      border: 3px solid #38bdf8;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(0);
+      transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+      background: rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 20px #38bdf8;
+      opacity: 0;
+    }
+    #touch-cursor.visible {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+
+    /* Right Column Keypads */
+    .keypads-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      justify-content: space-between;
+    }
+
+    .keypads-subgrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 580px) {
+      .keypads-subgrid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* BIG Virtual D-Pad Keypad for Screen Panning */
+    .dpad-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 58px);
+      gap: 8px;
+    }
+    .dpad-btn {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1.5px solid var(--panel-border);
+      border-radius: 14px;
+      color: var(--text-main);
+      font-size: 24px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: all 0.15s;
+    }
+    .dpad-btn:active, .dpad-btn.active {
+      background: #38bdf8;
+      border-color: #38bdf8;
+      color: #020617;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.7);
+      transform: scale(0.96);
+    }
+    .dpad-btn.up { grid-column: 2; grid-row: 1; }
+    .dpad-btn.left { grid-column: 1; grid-row: 2; }
+    .dpad-btn.center {
+      grid-column: 2;
+      grid-row: 2;
+      font-size: 13px;
+      font-weight: 800;
+      background: rgba(244, 63, 94, 0.2);
+      border-color: rgba(244, 63, 94, 0.5);
+      color: #fda4af;
+    }
+    .dpad-btn.center:active {
+      background: #f43f5e;
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.7);
+    }
+    .dpad-btn.right { grid-column: 3; grid-row: 2; }
+    .dpad-btn.down { grid-column: 2; grid-row: 3; }
+
+    /* BIG Camera Angles Keypad (7 Angles) */
+    .angles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 42px);
+      gap: 6px;
+    }
+    .btn-angle {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1.5px solid var(--panel-border);
+      border-radius: 12px;
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      transition: all 0.15s;
+    }
+    .btn-angle:active {
+      background: #38bdf8;
+      border-color: #38bdf8;
+      color: #020617;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.7);
+      transform: scale(0.96);
+    }
+
+    /* Quick Action Buttons (Tour, Audio, Play/Pause) */
+    .quick-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-action {
+      flex: 1;
+      padding: 14px 10px;
+      border-radius: 14px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+    .btn-action:active {
+      transform: scale(0.97);
+    }
+    .btn-action.active {
+      background: #f43f5e;
+      border-color: #f43f5e;
+      color: #ffffff;
+      box-shadow: 0 0 20px rgba(244, 63, 94, 0.6);
+    }
+
+    /* Full-Width Stage Teleport Grid Section */
+    .stages-section {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .stages-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    .stages-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 1050px) {
+      .stages-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    @media (max-width: 600px) {
+      .stages-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .btn-stage {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 14px 14px;
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-stage:active {
+      transform: scale(0.97);
+    }
+    .btn-stage.active {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 24px;
+      background: rgba(56, 189, 248, 0.95);
+      color: #020617;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: 800;
+      opacity: 0;
+      transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+      z-index: 1000;
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.5);
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <div id="toast">Command Sent</div>
+
+  <!-- Status Bar with Fullscreen Toggle -->
+  <div id="status-bar" class="disconnected">
+    <span id="status-text">Connecting to 3D simulation...</span>
+    <div class="status-right-group">
+      <span id="ping-indicator">🔴 Offline</span>
+      <button class="btn-fs" id="btnFullscreen" title="Toggle Fullscreen Screen">⛶ Fullscreen</button>
+    </div>
+  </div>
+
+  <!-- Module Selector Tabs -->
+  <div class="module-tabs">
+    <button class="mod-btn active" data-module="solar">☀️ Solar System</button>
+    <button class="mod-btn" data-module="photosynthesis">🌿 Plant Biology</button>
+    <button class="mod-btn" data-module="reproduction">👶 Human Reproduction</button>
+  </div>
+
+  <!-- Main 2-Column Fullscreen Control Arena -->
+  <div class="main-arena">
+    <!-- Left Column: Giant Touch & Drag Trackpad -->
+    <div id="trackpad">
+      <div id="touch-cursor"></div>
+      <div class="trackpad-icon">🔄</div>
+      <div class="trackpad-hint">Touch & Drag Trackpad</div>
+      <div class="trackpad-sub">Universal 360° Omnidirectional Orbit // Scroll to Zoom</div>
+    </div>
+
+    <!-- Right Column: Big Keypads & Actions -->
+    <div class="keypads-col">
+      <div class="keypads-subgrid">
+        <!-- BIG Virtual D-Pad Keypad (Arrow Keys Panning) -->
+        <div class="panel-card">
+          <div class="card-title">🎮 Screen Panning (Arrow Keys)</div>
+          <div class="dpad-container">
+            <button class="dpad-btn up" data-pan="up" title="Pan Up (Arrow Up)">▲</button>
+            <button class="dpad-btn left" data-pan="left" title="Pan Left (Arrow Left)">◀</button>
+            <button class="dpad-btn center" id="btnCenterReset" title="Reset View (R)">⟲ Reset</button>
+            <button class="dpad-btn right" data-pan="right" title="Pan Right (Arrow Right)">▶</button>
+            <button class="dpad-btn down" data-pan="down" title="Pan Down (Arrow Down)">▼</button>
+          </div>
+        </div>
+
+        <!-- BIG Quick Camera Sides Keypad -->
+        <div class="panel-card">
+          <div class="card-title">📷 7 Camera Angles</div>
+          <div class="angles-grid">
+            <button class="btn-angle" data-side="front">Front (F)</button>
+            <button class="btn-angle" data-side="back">Back (B)</button>
+            <button class="btn-angle" data-side="left">Left (L)</button>
+            <button class="btn-angle" data-side="right">Right</button>
+            <button class="btn-angle" data-side="top">Top (T)</button>
+            <button class="btn-angle" data-side="bottom">Bottom</button>
+            <button class="btn-angle" data-side="iso" style="grid-column: span 3;">3D Isometric Angle</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons (Play/Pause, Tour, Reset) -->
+      <div class="quick-actions">
+        <button class="btn-action" id="btnPause">⏸ Pause (Space)</button>
+        <button class="btn-action" id="btnTour">🎬 Tour (A)</button>
+        <button class="btn-action" id="btnReset">🔄 Overview (R)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full-Width Stage Teleport Grid Section -->
+  <div class="stages-section">
+    <div class="stages-title">📍 Jump & Track Stage / Celestial Body</div>
+    <div class="stages-grid" id="stagesContainer">
+      <!-- Dynamically populated per module -->
+    </div>
+  </div>
+
+  <script>
+    const STAGES_DATA = {
+      solar: [
+        { name: '1. Sun', icon: '☀️' },
+        { name: '2. Mercury', icon: '☿' },
+        { name: '3. Venus', icon: '♀' },
+        { name: '4. Earth & Moon', icon: '⊕' },
+        { name: '5. Mars', icon: '♂' },
+        { name: '6. Jupiter', icon: '♃' },
+        { name: '7. Saturn', icon: '♄' },
+        { name: '8. Uranus', icon: '♅' },
+        { name: '9. Neptune', icon: '♆' },
+        { name: '10. Pluto', icon: '♇' }
+      ],
+      photosynthesis: [
+        { name: '1. Sun Photon Transit', icon: '☀️' },
+        { name: '2. Canopy Catchment', icon: '🌳' },
+        { name: '3. Plant Growth', icon: '🌱' },
+        { name: '4. Leaf Anatomy', icon: '🍃' },
+        { name: '5. Chloroplast Cell', icon: '🔬' },
+        { name: '6. Photosystem II', icon: '⚡' },
+        { name: '7. Electron Chain', icon: '🧪' },
+        { name: '8. ATP Synthase', icon: '⚙️' },
+        { name: '9. Calvin Cycle', icon: '🔄' }
+      ],
+      reproduction: [
+        { name: '1. Sperm Journey', icon: '🏊' },
+        { name: '2. The Oocyte', icon: '🥚' },
+        { name: '3. Acrosome Fusion', icon: '🔬' },
+        { name: '4. Calcium Spark', icon: '⚡' },
+        { name: '5. Blastocyst', icon: '🧬' },
+        { name: '6. Implantation', icon: '🌱' },
+        { name: '7. Organogenesis', icon: '❤️' },
+        { name: '8. Fetal Development', icon: '👶' },
+        { name: '9. Full-Term Miracle', icon: '🍼' }
+      ]
+    };
+
+    let activeModule = 'solar';
+    let currentStageIndex = 0;
+    let ws = null;
+    let isPaused = false;
+    let isTouring = false;
+
+    const statusBar = document.getElementById('status-bar');
+    const statusText = document.getElementById('status-text');
+    const pingIndicator = document.getElementById('ping-indicator');
+    const toast = document.getElementById('toast');
+    const trackpad = document.getElementById('trackpad');
+    const touchCursor = document.getElementById('touch-cursor');
+    const stagesContainer = document.getElementById('stagesContainer');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1200);
+    }
+
+    // Fullscreen Toggle
+    if (btnFullscreen) {
+      btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+          btnFullscreen.textContent = '✕ Exit Fullscreen';
+        } else {
+          document.exitFullscreen().catch(() => {});
+          btnFullscreen.textContent = '⛶ Fullscreen';
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        btnFullscreen.textContent = document.fullscreenElement ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
+      });
+    }
+
+    function renderStages() {
+      const list = STAGES_DATA[activeModule] || STAGES_DATA.solar;
+      stagesContainer.innerHTML = list.map((st, idx) => `
+        <button class="btn-stage ${idx === currentStageIndex ? 'active' : ''}" data-stage="${idx}">
+          <span>${st.icon}</span>
+          <span>${st.name}</span>
+        </button>
+      `).join('');
+
+      stagesContainer.querySelectorAll('.btn-stage').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-stage'), 10);
+          currentStageIndex = idx;
+          renderStages();
+          send({ type: 'teleport', stageIndex: idx });
+          showToast(`Tracking ${list[idx].name}`);
+        });
+      });
+    }
+
+    // Connect WebSocket Relay Bridge
+    function connectWS() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws-remote`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        statusBar.className = 'connected';
+        statusText.textContent = '🟢 Connected to 3D Simulation';
+        pingIndicator.textContent = 'Live';
+        send({ role: 'controller' });
+      };
+
+      ws.onclose = () => {
+        statusBar.className = 'disconnected';
+        statusText.textContent = '🔴 Disconnected. Reconnecting...';
+        pingIndicator.textContent = 'Offline';
+        setTimeout(connectWS, 2000);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'stageChanged') {
+            currentStageIndex = msg.stageIndex;
+            renderStages();
+          }
+        } catch(err) {}
+      };
+    }
+
+    function send(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    }
+
+    // Module Switcher Tabs
+    document.querySelectorAll('.mod-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeModule = btn.getAttribute('data-module');
+        currentStageIndex = 0;
+        renderStages();
+        send({ type: 'switchModule', moduleId: activeModule });
+        showToast(`Switched to ${activeModule.toUpperCase()}`);
+      });
+    });
+
+    // Touch & Mouse Trackpad for 360° Omnidirectional Orbit
+    let isTracking = false;
+    let lastX = 0, lastY = 0;
+
+    trackpad.addEventListener('pointerdown', (e) => {
+      isTracking = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      trackpad.classList.add('active');
+      trackpad.setPointerCapture(e.pointerId);
+
+      const rect = trackpad.getBoundingClientRect();
+      touchCursor.style.left = (e.clientX - rect.left) + 'px';
+      touchCursor.style.top = (e.clientY - rect.top) + 'px';
+      touchCursor.classList.add('visible');
+    });
+
+    trackpad.addEventListener('pointermove', (e) => {
+      if (!isTracking) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      const rect = trackpad.getBoundingClientRect();
+      touchCursor.style.left = (e.clientX - rect.left) + 'px';
+      touchCursor.style.top = (e.clientY - rect.top) + 'px';
+
+      send({ type: 'drag', dx, dy });
+    });
+
+    const endTrack = () => {
+      isTracking = false;
+      trackpad.classList.remove('active');
+      touchCursor.classList.remove('visible');
+    };
+    trackpad.addEventListener('pointerup', endTrack);
+    trackpad.addEventListener('pointercancel', endTrack);
+
+    // Mouse Wheel Zoom / Forward-Back Thrust
+    window.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      send({ type: 'wheel', dy: e.deltaY });
+    }, { passive: false });
+
+    // BIG Virtual D-Pad Panning (Arrow keys)
+    document.querySelectorAll('.dpad-btn[data-pan]').forEach(btn => {
+      let panTimer = null;
+      const dir = btn.getAttribute('data-pan');
+
+      const doPan = () => {
+        let dx = 0, dy = 0;
+        if (dir === 'up') dy = 8;
+        if (dir === 'down') dy = -8;
+        if (dir === 'left') dx = -8;
+        if (dir === 'right') dx = 8;
+        send({ type: 'pan', dx, dy });
+      };
+
+      btn.addEventListener('pointerdown', () => {
+        btn.classList.add('active');
+        doPan();
+        panTimer = setInterval(doPan, 70);
+      });
+
+      const stopPan = () => {
+        btn.classList.remove('active');
+        if (panTimer) clearInterval(panTimer);
+        panTimer = null;
+      };
+      btn.addEventListener('pointerup', stopPan);
+      btn.addEventListener('pointercancel', stopPan);
+      btn.addEventListener('pointerleave', stopPan);
+    });
+
+    document.getElementById('btnCenterReset').addEventListener('click', () => {
+      send({ type: 'reset' });
+      showToast('Camera Reset');
+    });
+
+    // Camera Angles (7 Presets)
+    document.querySelectorAll('.btn-angle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const side = btn.getAttribute('data-side');
+        send({ type: 'cameraSide', side });
+        showToast(`${side.toUpperCase()} View`);
+      });
+    });
+
+    // Quick Actions
+    const btnPause = document.getElementById('btnPause');
+    btnPause.addEventListener('click', () => {
+      isPaused = !isPaused;
+      btnPause.textContent = isPaused ? '▶ Resume' : '⏸ Pause';
+      btnPause.classList.toggle('active', isPaused);
+      send({ type: 'setParam', key: 'simSpeed', value: isPaused ? 0.0 : 1.0 });
+    });
+
+    const btnTour = document.getElementById('btnTour');
+    btnTour.addEventListener('click', () => {
+      isTouring = !isTouring;
+      btnTour.classList.toggle('active', isTouring);
+      send({ type: 'tour' });
+      showToast(isTouring ? 'Tour Started' : 'Tour Stopped');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      send({ type: 'reset' });
+      showToast('Overview Reset');
+    });
+
+    // Keyboard Shortcuts from Remote Controller
+    window.addEventListener('keydown', (e) => {
+      const list = STAGES_DATA[activeModule] || STAGES_DATA.solar;
+      if (e.key >= '1' && e.key <= '9') {
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < list.length) {
+          currentStageIndex = idx;
+          renderStages();
+          send({ type: 'teleport', stageIndex: idx });
+          showToast(`Tracking ${list[idx].name}`);
+        }
+      } else if (e.key === '0' && list.length >= 10) {
+        currentStageIndex = 9;
+        renderStages();
+        send({ type: 'teleport', stageIndex: 9 });
+        showToast(`Tracking ${list[9].name}`);
+      } else if (e.code === 'Space') {
+        e.preventDefault();
+        btnPause.click();
+      } else if (e.key.toLowerCase() === 'a') {
+        btnTour.click();
+      } else if (e.key.toLowerCase() === 'r') {
+        send({ type: 'reset' });
+      } else if (e.key.toLowerCase() === 'f') {
+        send({ type: 'cameraSide', side: 'front' });
+      } else if (e.key.toLowerCase() === 'b') {
+        send({ type: 'cameraSide', side: 'back' });
+      } else if (e.key.toLowerCase() === 'l') {
+        send({ type: 'cameraSide', side: 'left' });
+      } else if (e.key.toLowerCase() === 't') {
+        send({ type: 'cameraSide', side: 'top' });
+      } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        send({ type: 'pan', dx: 0, dy: 8 });
+      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        send({ type: 'pan', dx: 0, dy: -8 });
+      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        send({ type: 'pan', dx: -8, dy: 0 });
+      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        send({ type: 'pan', dx: 8, dy: 0 });
+      }
+    });
+
+    // Initialize
+    renderStages();
+    connectWS();
+  </script>
+</body>
+</html>
