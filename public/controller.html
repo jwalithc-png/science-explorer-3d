@@ -684,6 +684,9 @@
       } else if (e.key.toLowerCase() === 'c') {
         send({ type: 'stopRotateModel' });
         showToast('Stopped Rotation');
+      } else if (e.key.toLowerCase() === 'a') {
+        send({ type: 'tour' });
+        showToast('Toggled Cinematic Tour');
       }
     });
 

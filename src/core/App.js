@@ -133,13 +133,19 @@ export class App {
         this.selectStage(idx);
       },
       onEnterVR: () => {
+        this.audioManager.init();
+        this.audioManager.resume();
         this.webXRManager.enterVR();
       },
       onToggleDualVR: () => {
+        this.audioManager.init();
+        this.audioManager.resume();
         const isDual = this.sceneManager.toggleDualScreenVR();
         return isDual;
       },
       onToggleTour: () => {
+        this.audioManager.init();
+        this.audioManager.resume();
         const isPlaying = this.tourController.toggleTour();
         this.hud.setTourState(isPlaying);
       },
@@ -339,13 +345,15 @@ export class App {
   initRemoteRelay() {
     this.remoteRelay = new RemoteRelayClient({
       onMessage: (msg) => {
-        if (msg.type === 'drag' || msg.type === 'pan' || msg.type === 'wheel' || msg.type === 'cameraSide') {
+        if (msg.type === 'drag' || msg.type === 'pan' || msg.type === 'wheel' || msg.type === 'cameraSide' || msg.type === 'rotateModel' || msg.type === 'stopRotateModel') {
           this.navigationController.applyRemoteInput(msg);
         } else if (msg.type === 'teleport') {
           this.tourController.stopTour();
           this.hud.setTourState(false);
           this.selectStage(msg.stageIndex);
         } else if (msg.type === 'tour') {
+          this.audioManager.init();
+          this.audioManager.resume();
           const isPlaying = this.tourController.toggleTour();
           this.hud.setTourState(isPlaying);
         } else if (msg.type === 'reset') {
