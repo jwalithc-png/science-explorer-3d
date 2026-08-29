@@ -394,6 +394,10 @@ export class App {
       } else if (e.key.toLowerCase() === 'c' && !e.ctrlKey) {
         // C = Turn OFF / Stop the 3D model rotation
         this.navigationController.stopRotatingModel();
+      } else if (e.key.toLowerCase() === 'a') {
+        // A = Toggle 10-stage animated visual tour with Stranger Things soundtrack
+        const isPlaying = this.tourController.toggleTour();
+        this.hud.setTourState(isPlaying);
       } else if (e.key.toLowerCase() === 'm') {
         const isMuted = this.audioManager.toggleMute();
         const icon = document.querySelector('#audioIcon');

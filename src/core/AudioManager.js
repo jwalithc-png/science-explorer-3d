@@ -19,6 +19,11 @@ export class AudioManager {
     this.heartbeatTimer = 0;
     this.bpm = 140;
     this.isHeartbeatActive = true;
+
+    // Stranger Things Theme Soundtrack Audio Element
+    this.soundtrack = new Audio('/audio/stranger_things_theme.mp3');
+    this.soundtrack.loop = true;
+    this.soundtrack.volume = 0.55;
   }
 
   init() {
@@ -32,6 +37,33 @@ export class AudioManager {
     } catch (e) {
       console.warn('Web Audio API not supported:', e);
     }
+  }
+
+  playTourSoundtrack() {
+    if (this.isMuted || !this.soundtrack) return;
+    this.soundtrack.currentTime = 0;
+    this.soundtrack.volume = 0.55;
+    const playPromise = this.soundtrack.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn('Soundtrack autoplay blocked until user interaction:', err);
+      });
+    }
+  }
+
+  stopTourSoundtrack() {
+    if (!this.soundtrack) return;
+    // Smooth fade out
+    const fade = setInterval(() => {
+      if (this.soundtrack.volume > 0.05) {
+        this.soundtrack.volume = Math.max(0, this.soundtrack.volume - 0.05);
+      } else {
+        clearInterval(fade);
+        this.soundtrack.pause();
+        this.soundtrack.currentTime = 0;
+        this.soundtrack.volume = 0.55;
+      }
+    }, 50);
   }
 
   resume() {
@@ -175,6 +207,9 @@ export class AudioManager {
     this.isMuted = !this.isMuted;
     if (this.isMuted) {
       this.stopNarration();
+      if (this.soundtrack) this.soundtrack.muted = true;
+    } else {
+      if (this.soundtrack) this.soundtrack.muted = false;
     }
     return this.isMuted;
   }

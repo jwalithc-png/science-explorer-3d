@@ -234,6 +234,10 @@ export class HUD {
                   <td><strong>Turn OFF / Stop</strong> 3D model rotation</td>
                 </tr>
                 <tr>
+                  <td><span class="kbd-chip">A</span></td>
+                  <td><strong>Toggle Full Visual Tour & Stranger Things Music</strong></td>
+                </tr>
+                <tr>
                   <td><span class="kbd-chip">Tab</span></td>
                   <td><strong>Cycle Modules</strong> (Solar ➔ Plant ➔ Conception)</td>
                 </tr>

@@ -264,14 +264,16 @@ export class NavigationController {
     const offset = new THREE.Vector3().setFromSpherical(this.spherical);
     const targetPos = this.currentLookAt.clone().add(offset);
 
-    // Update main perspective camera
-    this.camera.position.copy(targetPos);
-    this.camera.lookAt(this.currentLookAt);
-
-    // Update WebXR / VR Camera Rig position in world space
     if (this.cameraRig) {
       this.cameraRig.position.copy(targetPos);
       this.cameraRig.lookAt(this.currentLookAt);
+      if (!this.isVRCallback || !this.isVRCallback()) {
+        this.camera.position.set(0, 0, 0);
+        this.camera.rotation.set(0, 0, 0);
+      }
+    } else {
+      this.camera.position.copy(targetPos);
+      this.camera.lookAt(this.currentLookAt);
     }
   }
 
@@ -295,13 +297,17 @@ export class NavigationController {
       this.isTransitioning = true;
       this.transitionProgress = 0;
     } else {
-      this.camera.position.copy(targetPos);
       this.currentLookAt.copy(targetLook);
-      this.camera.lookAt(this.currentLookAt);
-
       if (this.cameraRig) {
         this.cameraRig.position.copy(targetPos);
         this.cameraRig.lookAt(this.currentLookAt);
+        if (!this.isVRCallback || !this.isVRCallback()) {
+          this.camera.position.set(0, 0, 0);
+          this.camera.rotation.set(0, 0, 0);
+        }
+      } else {
+        this.camera.position.copy(targetPos);
+        this.camera.lookAt(this.currentLookAt);
       }
     }
   }
@@ -408,17 +414,22 @@ export class NavigationController {
       const dynamicTarget = this.getTargetWorldPosition();
       this.targetLookAt.copy(dynamicTarget);
 
-      this.camera.position.lerpVectors(this.startPos, this.targetPos, ease);
       this.currentLookAt.lerpVectors(this.startLookAt, this.targetLookAt, ease);
-      this.camera.lookAt(this.currentLookAt);
 
       if (this.cameraRig) {
         this.cameraRig.position.lerpVectors(this.startPos, this.targetPos, ease);
         this.cameraRig.lookAt(this.currentLookAt);
+        if (!this.isVRCallback || !this.isVRCallback()) {
+          this.camera.position.set(0, 0, 0);
+          this.camera.rotation.set(0, 0, 0);
+        }
+      } else {
+        this.camera.position.lerpVectors(this.startPos, this.targetPos, ease);
+        this.camera.lookAt(this.currentLookAt);
       }
 
       if (!this.isTransitioning) {
-        const offset = this.camera.position.clone().sub(this.currentLookAt);
+        const offset = (this.cameraRig ? this.cameraRig.position : this.camera.position).clone().sub(this.currentLookAt);
         this.spherical.setFromVector3(offset);
       }
     } else {

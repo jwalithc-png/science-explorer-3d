@@ -41,6 +41,9 @@ export class TourController {
     this.isPlaying = true;
     this.currentStep = fromStage;
     this.stepTimer = 0;
+    if (this.audioManager) {
+      this.audioManager.playTourSoundtrack();
+    }
     this.executeStage(this.currentStep);
   }
 
@@ -48,6 +51,7 @@ export class TourController {
     this.isPlaying = false;
     if (this.audioManager) {
       this.audioManager.stopNarration();
+      this.audioManager.stopTourSoundtrack();
     }
   }
 
@@ -64,7 +68,7 @@ export class TourController {
       this.onStageChangeCallback(stageIndex);
     }
 
-    // Trigger stage-specific audio cues & scientific narration
+    // Trigger stage-specific scientific voice narration
     if (this.audioManager && stage.narration) {
       this.audioManager.speakNarration(stage.narration);
     }
@@ -75,11 +79,17 @@ export class TourController {
 
     this.stepTimer += delta;
 
+    // Superb cinematic swooping orbit around active planet / object
+    if (!this.navController.isTransitioning) {
+      this.navController.spherical.theta += delta * 0.32;
+      this.navController.updateCameraFromSpherical();
+    }
+
     if (this.stepTimer >= this.stepDuration) {
       this.stepTimer = 0;
       this.currentStep++;
       if (this.currentStep >= this.stages.length) {
-        this.currentStep = 0; // Loop or end
+        this.currentStep = 0; // Loop seamlessly
       }
       this.executeStage(this.currentStep);
     }
