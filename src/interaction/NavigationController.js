@@ -266,8 +266,10 @@ export class NavigationController {
 
     if (this.cameraRig) {
       this.cameraRig.position.copy(targetPos);
-      this.cameraRig.lookAt(this.currentLookAt);
-      if (!this.isVRCallback || !this.isVRCallback()) {
+      if (this.isVRCallback && this.isVRCallback()) {
+        this.cameraRig.quaternion.identity();
+      } else {
+        this.cameraRig.lookAt(this.currentLookAt);
         this.camera.position.set(0, 0, 0);
         this.camera.rotation.set(0, 0, 0);
       }
@@ -300,8 +302,10 @@ export class NavigationController {
       this.currentLookAt.copy(targetLook);
       if (this.cameraRig) {
         this.cameraRig.position.copy(targetPos);
-        this.cameraRig.lookAt(this.currentLookAt);
-        if (!this.isVRCallback || !this.isVRCallback()) {
+        if (this.isVRCallback && this.isVRCallback()) {
+          this.cameraRig.quaternion.identity();
+        } else {
+          this.cameraRig.lookAt(this.currentLookAt);
           this.camera.position.set(0, 0, 0);
           this.camera.rotation.set(0, 0, 0);
         }
@@ -418,8 +422,10 @@ export class NavigationController {
 
       if (this.cameraRig) {
         this.cameraRig.position.lerpVectors(this.startPos, this.targetPos, ease);
-        this.cameraRig.lookAt(this.currentLookAt);
-        if (!this.isVRCallback || !this.isVRCallback()) {
+        if (this.isVRCallback && this.isVRCallback()) {
+          this.cameraRig.quaternion.identity();
+        } else {
+          this.cameraRig.lookAt(this.currentLookAt);
           this.camera.position.set(0, 0, 0);
           this.camera.rotation.set(0, 0, 0);
         }

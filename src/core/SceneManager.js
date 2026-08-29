@@ -142,19 +142,29 @@ export class SceneManager {
       const height = window.innerHeight;
       const halfWidth = Math.floor(width * 0.5);
 
-      // Apply gyro orientation to camera rig in Cardboard mode
+      // Keep camera rig pure translation so parent transform never inverts gyro head tracking
+      this.cameraRig.quaternion.identity();
+
+      // Apply standard W3C DeviceOrientation with Screen Orientation angle compensation
       if (this.hasOrientation) {
-        const radBeta = THREE.MathUtils.degToRad(this.deviceOrientation.beta - 90);
-        const radGamma = THREE.MathUtils.degToRad(-this.deviceOrientation.gamma);
-        const radAlpha = THREE.MathUtils.degToRad(this.deviceOrientation.alpha);
-        this.camera.quaternion.setFromEuler(new THREE.Euler(radBeta, radAlpha, radGamma, 'YXZ'));
+        const alphaRad = THREE.MathUtils.degToRad(this.deviceOrientation.alpha || 0);
+        const betaRad = THREE.MathUtils.degToRad(this.deviceOrientation.beta || 0);
+        const gammaRad = THREE.MathUtils.degToRad(this.deviceOrientation.gamma || 0);
+        const screenOrient = (window.screen && window.screen.orientation) ? (window.screen.orientation.angle || 0) : (window.orientation || 0);
+        const screenOrientRad = THREE.MathUtils.degToRad(screenOrient);
+
+        this.setObjectQuaternion(this.camera.quaternion, alphaRad, betaRad, gammaRad, screenOrientRad);
       }
 
-      // Update stereo eye positions based on IPD
-      this.cameraLeft.position.copy(this.camera.position).add(new THREE.Vector3(-this.ipd * 0.5, 0, 0).applyQuaternion(this.camera.quaternion));
+      // Update stereo eye positions & orientations relative to cameraRig
+      const eyeOffset = this.ipd * 0.5;
+      const leftVec = new THREE.Vector3(-eyeOffset, 0, 0).applyQuaternion(this.camera.quaternion);
+      const rightVec = new THREE.Vector3(eyeOffset, 0, 0).applyQuaternion(this.camera.quaternion);
+
+      this.cameraLeft.position.copy(leftVec);
       this.cameraLeft.quaternion.copy(this.camera.quaternion);
 
-      this.cameraRight.position.copy(this.camera.position).add(new THREE.Vector3(this.ipd * 0.5, 0, 0).applyQuaternion(this.camera.quaternion));
+      this.cameraRight.position.copy(rightVec);
       this.cameraRight.quaternion.copy(this.camera.quaternion);
 
       this.renderer.setScissorTest(true);
@@ -174,5 +184,17 @@ export class SceneManager {
       // Standard Mono Screen Render
       this.renderer.render(this.scene, this.camera);
     }
+  }
+
+  setObjectQuaternion(quaternion, alpha, beta, gamma, orient) {
+    const zee = new THREE.Vector3(0, 0, 1);
+    const euler = new THREE.Euler();
+    const q0 = new THREE.Quaternion();
+    const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // - PI/2 around x-axis
+
+    euler.set(beta, alpha, -gamma, 'YXZ'); // Standard device coordinate frame
+    quaternion.setFromEuler(euler);
+    quaternion.multiply(q1); // Camera looks out back of device, not top
+    quaternion.multiply(q0.setFromAxisAngle(zee, -orient)); // Adjust for device screen rotation (0, 90, 180, 270)
   }
 }
