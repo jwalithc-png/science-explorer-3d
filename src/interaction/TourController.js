@@ -15,16 +15,14 @@ export class TourController {
     this.stages = CONCEPTION_STAGES;
     this.isPlaying = false;
     this.currentStep = 0;
-    this.stepTimer = 0;
-    this.stepDuration = 12.0; // 12 seconds per scientific stage
+    this.orbitAngleTraveled = 0; // Tracks radians rotated around current model
   }
 
   /**
    * Switch the active stages array and tour duration (for module switching)
    */
-  setStages(stagesArray, stepDuration = 12.0) {
+  setStages(stagesArray) {
     this.stages = stagesArray;
-    this.stepDuration = stepDuration;
     this.stopTour();
   }
 
@@ -40,7 +38,7 @@ export class TourController {
   startTour(fromStage = 0) {
     this.isPlaying = true;
     this.currentStep = fromStage;
-    this.stepTimer = 0;
+    this.orbitAngleTraveled = 0;
     if (this.audioManager) {
       this.audioManager.playTourSoundtrack();
     }
@@ -49,6 +47,7 @@ export class TourController {
 
   stopTour() {
     this.isPlaying = false;
+    this.orbitAngleTraveled = 0;
     if (this.audioManager) {
       this.audioManager.stopNarration();
       this.audioManager.stopTourSoundtrack();
@@ -61,6 +60,7 @@ export class TourController {
       return;
     }
 
+    this.orbitAngleTraveled = 0;
     const stage = this.stages[stageIndex];
     this.navController.setStage(stageIndex, true);
 
@@ -77,16 +77,24 @@ export class TourController {
   update(delta) {
     if (!this.isPlaying) return;
 
-    this.stepTimer += delta;
-
-    // Superb cinematic swooping orbit around active planet / object
-    if (!this.navController.isTransitioning) {
-      this.navController.spherical.theta += delta * 0.32;
-      this.navController.updateCameraFromSpherical();
+    // 1. Wait while camera is flying/transitioning towards the model
+    if (this.navController.isTransitioning) {
+      return;
     }
 
-    if (this.stepTimer >= this.stepDuration) {
-      this.stepTimer = 0;
+    // 2. Camera has arrived: Perform a smooth, detailed 360-degree rotation around the model
+    const rotSpeed = 0.65; // ~9.6 seconds for a full 360° inspection orbit
+    const angleDelta = delta * rotSpeed;
+    this.orbitAngleTraveled += angleDelta;
+
+    this.navController.spherical.theta += angleDelta;
+    // Dynamic subtle pitch oscillation to reveal top/side/bottom angles of the particle model
+    this.navController.spherical.phi = Math.PI * 0.38 + 0.14 * Math.sin(this.orbitAngleTraveled * 2.0);
+    this.navController.updateCameraFromSpherical();
+
+    // 3. Once full 360° (2*PI) rotation around this model is complete, fly to the next model
+    if (this.orbitAngleTraveled >= Math.PI * 2) {
+      this.orbitAngleTraveled = 0;
       this.currentStep++;
       if (this.currentStep >= this.stages.length) {
         this.currentStep = 0; // Loop seamlessly
