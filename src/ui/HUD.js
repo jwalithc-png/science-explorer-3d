@@ -214,20 +214,24 @@ export class HUD {
                   <td><strong>Smooth Dolly Zoom</strong> in / out</td>
                 </tr>
                 <tr>
-                  <td><span class="kbd-chip">Arrow Keys / WASD</span></td>
-                  <td><strong>Pan Screen Up, Down, Left, Right</strong> smoothly</td>
+                  <td><span class="kbd-chip">Arrow Keys</span></td>
+                  <td><strong>Move Screen / Camera</strong> in arrow direction</td>
                 </tr>
                 <tr>
-                  <td><span class="kbd-chip">Q / E & + / -</span></td>
-                  <td><strong>Keyboard Zoom In / Out</strong></td>
-                </tr>
-                <tr>
-                  <td><span class="kbd-chip">J / L & I / K</span></td>
-                  <td><strong>Keyboard 360° Orbit Rotation</strong> (Yaw / Pitch)</td>
+                  <td><span class="kbd-chip">Z / X</span></td>
+                  <td><strong>Zoom In (Z) / Zoom Out (X)</strong></td>
                 </tr>
                 <tr>
                   <td><span class="kbd-chip">1 – 9 / 0</span></td>
-                  <td><strong>Jump & Track</strong> any of the 10 stages / planets</td>
+                  <td><strong>Jump & Track</strong> any model / stage / planet</td>
+                </tr>
+                <tr>
+                  <td><span class="kbd-chip">R</span></td>
+                  <td><strong>Rotate 3D Model</strong> on its own axis</td>
+                </tr>
+                <tr>
+                  <td><span class="kbd-chip">C</span></td>
+                  <td><strong>Turn OFF / Stop</strong> 3D model rotation</td>
                 </tr>
                 <tr>
                   <td><span class="kbd-chip">Tab</span></td>

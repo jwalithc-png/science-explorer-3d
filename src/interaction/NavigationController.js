@@ -13,12 +13,12 @@ const DEFAULT_STAGES = CONCEPTION_STAGES;
  * - Scroll Wheel / Touch Pinch: Smooth Dolly Zoom In & Out (radius 4 to 450 units)
  * 
  * ⌨️ KEYBOARD CONTROLS (Desktop & VR):
- * - Arrow Keys (▲, ▼, ◀, ▶) & WASD: Pan screen Up, Down, Left, Right
- * - Q / E or + / - : Smooth Zoom In / Out
- * - Shift + Arrow Keys / (J, L, I, K): Keyboard 360° Camera Orbit
- * - 1 – 9 / 0: Jump & track stage / celestial body
+ * - Arrow Keys (▲, ▼, ◀, ▶): Move camera in that direction (Up, Down, Left, Right)
+ * - Z: Zoom In    X: Zoom Out
+ * - 1 – 9: Jump & track stage / celestial body
+ * - R: Rotate the currently selected 3D model on its axis
+ * - C: Turn OFF / Stop the 3D model rotation
  * - F, B, L, T: Instant Camera Sides (Front, Back, Left, Top)
- * - R: Reset camera view
  * - Space: Pause / Resume simulation
  */
 export class NavigationController {
@@ -38,6 +38,10 @@ export class NavigationController {
     // Auto 360 Spin
     this.autoRotate360 = false;
 
+    // Per-model self-rotation: index of the model currently spinning on its own axis (-1 = none)
+    this.spinningModelIndex = -1;
+    this.modelSpinSpeed = 1.5; // radians per second
+
     // Flight interpolation endpoints
     this.startPos = new THREE.Vector3();
     this.targetPos = new THREE.Vector3();
@@ -56,6 +60,24 @@ export class NavigationController {
 
     this.initEventListeners();
     this.setStage(0, false);
+  }
+
+  startRotatingCurrentModel() {
+    this.spinningModelIndex = this.currentStageIndex;
+    console.log(`🔄 Rotating model ${this.currentStageIndex + 1} on its axis`);
+  }
+
+  stopRotatingModel() {
+    this.spinningModelIndex = -1;
+    console.log('🛑 Stopped 3D model rotation');
+  }
+
+  toggleRotatingCurrentModel() {
+    if (this.spinningModelIndex === this.currentStageIndex) {
+      this.stopRotatingModel();
+    } else {
+      this.startRotatingCurrentModel();
+    }
   }
 
   initEventListeners() {
@@ -297,6 +319,10 @@ export class NavigationController {
       this.setCameraSideView(input.side);
     } else if (input.type === 'teleport') {
       this.setStage(input.stageIndex, true);
+    } else if (input.type === 'rotateModel') {
+      this.startRotatingCurrentModel();
+    } else if (input.type === 'stopRotateModel') {
+      this.stopRotatingModel();
     } else if (input.type === 'reset') {
       this.setStage(0, true);
     }
@@ -339,12 +365,12 @@ export class NavigationController {
       panned = true;
     }
 
-    // 3. Keyboard Smooth Zoom (Q zooms in, E zooms out, Equal/Minus, PageUp/PageDown)
+    // 3. Keyboard Smooth Zoom (Z zooms in, X zooms out, Q/E, Equal/Minus, PageUp/PageDown)
     const zoomSpeed = 35.0 * delta;
-    if (this.keysPressed['KeyQ'] || this.keysPressed['Equal'] || this.keysPressed['NumpadAdd'] || this.keysPressed['PageUp']) {
+    if (this.keysPressed['KeyZ'] || this.keysPressed['KeyQ'] || this.keysPressed['Equal'] || this.keysPressed['NumpadAdd'] || this.keysPressed['PageUp']) {
       this.zoomCamera(-zoomSpeed);
     }
-    if (this.keysPressed['KeyE'] || this.keysPressed['Minus'] || this.keysPressed['NumpadSubtract'] || this.keysPressed['PageDown']) {
+    if (this.keysPressed['KeyX'] || this.keysPressed['KeyE'] || this.keysPressed['Minus'] || this.keysPressed['NumpadSubtract'] || this.keysPressed['PageDown']) {
       this.zoomCamera(zoomSpeed);
     }
 

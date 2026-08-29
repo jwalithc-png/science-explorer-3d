@@ -440,52 +440,14 @@
     <button class="mod-btn" data-module="reproduction">👶 Human Reproduction</button>
   </div>
 
-  <!-- Main 2-Column Fullscreen Control Arena -->
-  <div class="main-arena">
-    <!-- Left Column: Giant Touch & Drag Trackpad -->
+  <!-- Main Fullscreen Control Arena -->
+  <div class="main-arena" style="grid-template-columns: 1fr;">
+    <!-- Giant Touch & Drag Trackpad (Full Width) -->
     <div id="trackpad">
       <div id="touch-cursor"></div>
       <div class="trackpad-icon">🔄</div>
       <div class="trackpad-hint">Touch & Drag Trackpad</div>
       <div class="trackpad-sub">Universal 360° Omnidirectional Orbit // Scroll to Zoom</div>
-    </div>
-
-    <!-- Right Column: Big Keypads & Actions -->
-    <div class="keypads-col">
-      <div class="keypads-subgrid">
-        <!-- BIG Virtual D-Pad Keypad (Arrow Keys Panning) -->
-        <div class="panel-card">
-          <div class="card-title">🎮 Screen Panning (Arrow Keys)</div>
-          <div class="dpad-container">
-            <button class="dpad-btn up" data-pan="up" title="Pan Up (Arrow Up)">▲</button>
-            <button class="dpad-btn left" data-pan="left" title="Pan Left (Arrow Left)">◀</button>
-            <button class="dpad-btn center" id="btnCenterReset" title="Reset View (R)">⟲ Reset</button>
-            <button class="dpad-btn right" data-pan="right" title="Pan Right (Arrow Right)">▶</button>
-            <button class="dpad-btn down" data-pan="down" title="Pan Down (Arrow Down)">▼</button>
-          </div>
-        </div>
-
-        <!-- BIG Quick Camera Sides Keypad -->
-        <div class="panel-card">
-          <div class="card-title">📷 7 Camera Angles</div>
-          <div class="angles-grid">
-            <button class="btn-angle" data-side="front">Front (F)</button>
-            <button class="btn-angle" data-side="back">Back (B)</button>
-            <button class="btn-angle" data-side="left">Left (L)</button>
-            <button class="btn-angle" data-side="right">Right</button>
-            <button class="btn-angle" data-side="top">Top (T)</button>
-            <button class="btn-angle" data-side="bottom">Bottom</button>
-            <button class="btn-angle" data-side="iso" style="grid-column: span 3;">3D Isometric Angle</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick Action Buttons (Play/Pause, Tour, Reset) -->
-      <div class="quick-actions">
-        <button class="btn-action" id="btnPause">⏸ Pause (Space)</button>
-        <button class="btn-action" id="btnTour">🎬 Tour (A)</button>
-        <button class="btn-action" id="btnReset">🔄 Overview (R)</button>
-      </div>
     </div>
   </div>
 
@@ -688,72 +650,6 @@
       send({ type: 'wheel', dy: e.deltaY });
     }, { passive: false });
 
-    // BIG Virtual D-Pad Panning (Arrow keys)
-    document.querySelectorAll('.dpad-btn[data-pan]').forEach(btn => {
-      let panTimer = null;
-      const dir = btn.getAttribute('data-pan');
-
-      const doPan = () => {
-        let dx = 0, dy = 0;
-        if (dir === 'up') dy = 8;
-        if (dir === 'down') dy = -8;
-        if (dir === 'left') dx = -8;
-        if (dir === 'right') dx = 8;
-        send({ type: 'pan', dx, dy });
-      };
-
-      btn.addEventListener('pointerdown', () => {
-        btn.classList.add('active');
-        doPan();
-        panTimer = setInterval(doPan, 70);
-      });
-
-      const stopPan = () => {
-        btn.classList.remove('active');
-        if (panTimer) clearInterval(panTimer);
-        panTimer = null;
-      };
-      btn.addEventListener('pointerup', stopPan);
-      btn.addEventListener('pointercancel', stopPan);
-      btn.addEventListener('pointerleave', stopPan);
-    });
-
-    document.getElementById('btnCenterReset').addEventListener('click', () => {
-      send({ type: 'reset' });
-      showToast('Camera Reset');
-    });
-
-    // Camera Angles (7 Presets)
-    document.querySelectorAll('.btn-angle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const side = btn.getAttribute('data-side');
-        send({ type: 'cameraSide', side });
-        showToast(`${side.toUpperCase()} View`);
-      });
-    });
-
-    // Quick Actions
-    const btnPause = document.getElementById('btnPause');
-    btnPause.addEventListener('click', () => {
-      isPaused = !isPaused;
-      btnPause.textContent = isPaused ? '▶ Resume' : '⏸ Pause';
-      btnPause.classList.toggle('active', isPaused);
-      send({ type: 'setParam', key: 'simSpeed', value: isPaused ? 0.0 : 1.0 });
-    });
-
-    const btnTour = document.getElementById('btnTour');
-    btnTour.addEventListener('click', () => {
-      isTouring = !isTouring;
-      btnTour.classList.toggle('active', isTouring);
-      send({ type: 'tour' });
-      showToast(isTouring ? 'Tour Started' : 'Tour Stopped');
-    });
-
-    document.getElementById('btnReset').addEventListener('click', () => {
-      send({ type: 'reset' });
-      showToast('Overview Reset');
-    });
-
     // Keyboard Shortcuts from Remote Controller
     window.addEventListener('keydown', (e) => {
       const list = STAGES_DATA[activeModule] || STAGES_DATA.solar;
@@ -770,29 +666,24 @@
         renderStages();
         send({ type: 'teleport', stageIndex: 9 });
         showToast(`Tracking ${list[9].name}`);
-      } else if (e.code === 'Space') {
-        e.preventDefault();
-        btnPause.click();
-      } else if (e.key.toLowerCase() === 'a') {
-        btnTour.click();
-      } else if (e.key.toLowerCase() === 'r') {
-        send({ type: 'reset' });
-      } else if (e.key.toLowerCase() === 'f') {
-        send({ type: 'cameraSide', side: 'front' });
-      } else if (e.key.toLowerCase() === 'b') {
-        send({ type: 'cameraSide', side: 'back' });
-      } else if (e.key.toLowerCase() === 'l') {
-        send({ type: 'cameraSide', side: 'left' });
-      } else if (e.key.toLowerCase() === 't') {
-        send({ type: 'cameraSide', side: 'top' });
-      } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+      } else if (e.code === 'ArrowUp') {
         send({ type: 'pan', dx: 0, dy: 8 });
-      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+      } else if (e.code === 'ArrowDown') {
         send({ type: 'pan', dx: 0, dy: -8 });
-      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      } else if (e.code === 'ArrowLeft') {
         send({ type: 'pan', dx: -8, dy: 0 });
-      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+      } else if (e.code === 'ArrowRight') {
         send({ type: 'pan', dx: 8, dy: 0 });
+      } else if (e.key.toLowerCase() === 'z') {
+        send({ type: 'wheel', dy: -80 });
+      } else if (e.key.toLowerCase() === 'x') {
+        send({ type: 'wheel', dy: 80 });
+      } else if (e.key.toLowerCase() === 'r') {
+        send({ type: 'rotateModel' });
+        showToast('Rotating Model');
+      } else if (e.key.toLowerCase() === 'c') {
+        send({ type: 'stopRotateModel' });
+        showToast('Stopped Rotation');
       }
     });
 

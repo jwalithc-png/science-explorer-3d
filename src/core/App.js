@@ -389,10 +389,11 @@ export class App {
         const nextIdx = (modules.indexOf(this.activeModule) + 1) % modules.length;
         this.hud.switchModule(modules[nextIdx]);
       } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey) {
-        this.tourController.stopTour();
-        this.hud.setTourState(false);
-        this.navigationController.setStage(0, true);
-        this.onStageChanged(0);
+        // R = Start/Rotate the currently selected 3D model on its own axis
+        this.navigationController.startRotatingCurrentModel();
+      } else if (e.key.toLowerCase() === 'c' && !e.ctrlKey) {
+        // C = Turn OFF / Stop the 3D model rotation
+        this.navigationController.stopRotatingModel();
       } else if (e.key.toLowerCase() === 'm') {
         const isMuted = this.audioManager.toggleMute();
         const icon = document.querySelector('#audioIcon');
@@ -478,6 +479,15 @@ export class App {
         model.update(delta, this.simParams);
       }
     });
+
+    // 5b. Spin the selected model on its own Y-axis (activated by pressing R)
+    const spinIdx = this.navigationController.spinningModelIndex;
+    if (spinIdx >= 0 && spinIdx < this.stageModels.length) {
+      const spinModel = this.stageModels[spinIdx];
+      if (spinModel && spinModel.group) {
+        spinModel.group.rotation.y += this.navigationController.modelSpinSpeed * delta;
+      }
+    }
 
     // 6. Update 3D Billboard Labels positions to follow moving objects
     if (this.billboardLabels) {
