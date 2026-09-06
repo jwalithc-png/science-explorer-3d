@@ -121,6 +121,9 @@ export class App {
         this.tourController.stopTour();
         this.hud.setTourState(false);
         this.selectStage(idx);
+        // Start continuous 360° turntable rotation & model spin until user stops it
+        this.navigationController.autoRotate360 = true;
+        this.navigationController.startRotatingCurrentModel();
       },
       onToggleTour: () => {
         this.audioManager.init();
@@ -129,13 +132,29 @@ export class App {
         this.hud.setTourState(isPlaying);
         return isPlaying;
       },
+      onStartTour: (fromStage = 0) => {
+        this.audioManager.init();
+        this.audioManager.resume();
+        this.tourController.startTour(fromStage);
+        this.hud.setTourState(true);
+      },
+      onStopTour: () => {
+        this.tourController.stopTour();
+        this.hud.setTourState(false);
+      },
       onToggleModelSpin: () => {
         const nav = this.navigationController;
-        if (nav.spinningModelIndex >= 0) {
+        if (nav.spinningModelIndex >= 0 || nav.autoRotate360) {
           nav.stopRotatingModel();
+          nav.autoRotate360 = false;
         } else {
           nav.startRotatingCurrentModel();
+          nav.autoRotate360 = true;
         }
+      },
+      onStartModelSpin: () => {
+        this.navigationController.startRotatingCurrentModel();
+        this.navigationController.autoRotate360 = true;
       },
       onTogglePause: () => {
         this.hud.togglePause();
@@ -149,7 +168,7 @@ export class App {
       getStagesCallback: () => this.navigationController.stages,
       getCurrentStageIndex: () => this.navigationController.currentStageIndex,
       getIsTourPlaying: () => this.tourController.isPlaying,
-      getIsModelSpinning: () => this.navigationController.spinningModelIndex >= 0,
+      getIsModelSpinning: () => (this.navigationController.spinningModelIndex >= 0 || this.navigationController.autoRotate360),
       getIsPaused: () => (this.simParams.simSpeed === 0),
       getActiveModule: () => this.activeModule,
       sendRemoteMessage: (msg) => {
@@ -588,13 +607,21 @@ export class App {
       }
     });
 
-    // 5b. Spin the selected model on its own Y-axis (activated by pressing R)
+    // 5b. Spin the selected model on its own Y-axis (runs until user stops it)
     const spinIdx = this.navigationController.spinningModelIndex;
     if (spinIdx >= 0 && spinIdx < this.stageModels.length) {
       const spinModel = this.stageModels[spinIdx];
-      if (spinModel && spinModel.group) {
-        spinModel.group.rotation.y += this.navigationController.modelSpinSpeed * delta;
+      if (spinModel) {
+        const grp = spinModel.group || (spinModel.isObject3D ? spinModel : null);
+        if (grp) {
+          grp.rotation.y += this.navigationController.modelSpinSpeed * delta;
+        }
       }
+    }
+
+    // In Dual-Screen VR, keep heading locked on active model during continuous 360° orbit or tour
+    if (this.sceneManager.isDualScreenVR && (this.navigationController.autoRotate360 || this.tourController.isPlaying)) {
+      this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
     }
 
     // 6. Update 3D Billboard Labels positions to follow moving objects

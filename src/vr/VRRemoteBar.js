@@ -23,7 +23,10 @@ export class VRRemoteBar {
     cameraRig,
     onSelectStage,
     onToggleTour,
+    onStartTour,
+    onStopTour,
     onToggleModelSpin,
+    onStartModelSpin,
     onTogglePause,
     onRecenterVR,
     onSwitchModule,
@@ -41,7 +44,10 @@ export class VRRemoteBar {
 
     this.onSelectStage = onSelectStage;
     this.onToggleTour = onToggleTour;
+    this.onStartTour = onStartTour;
+    this.onStopTour = onStopTour;
     this.onToggleModelSpin = onToggleModelSpin;
+    this.onStartModelSpin = onStartModelSpin;
     this.onTogglePause = onTogglePause;
     this.onRecenterVR = onRecenterVR;
     this.onSwitchModule = onSwitchModule;
@@ -201,30 +207,49 @@ export class VRRemoteBar {
     this.windowGroup.visible = false;
     this.redBoxGroup.visible = true;
 
-    // Execute the selected function / work!
-    if (this.pendingAction) {
-      if (this.pendingAction.type === 'stage') {
-        const stageIdx = this.pendingAction.index;
-        // If module changed, switch module first
-        if (this.selectedModule && this.selectedModule !== this.getActiveModule()) {
-          if (this.onSwitchModule) this.onSwitchModule(this.selectedModule);
-        }
-        if (this.onSelectStage) {
-          this.onSelectStage(stageIdx);
-        }
-      } else if (this.pendingAction.type === 'tour') {
-        if (this.onToggleTour) this.onToggleTour();
-      } else if (this.pendingAction.type === 'spin') {
-        if (this.onToggleModelSpin) this.onToggleModelSpin();
-      } else if (this.pendingAction.type === 'pause') {
-        if (this.onTogglePause) this.onTogglePause();
-      } else if (this.pendingAction.type === 'recenter') {
-        if (this.onRecenterVR) this.onRecenterVR();
+    // Use pending action or fallback to selected stage
+    const action = this.pendingAction || { type: 'stage', index: this.selectedStageIndex, moduleId: this.selectedModule };
+
+    if (action.type === 'stage') {
+      const stageIdx = (action.index !== undefined) ? action.index : this.selectedStageIndex;
+      const targetMod = action.moduleId || this.selectedModule;
+      if (targetMod && targetMod !== this.getActiveModule()) {
+        if (this.onSwitchModule) this.onSwitchModule(targetMod);
       }
-    } else if (this.selectedModule && this.selectedModule !== this.getActiveModule()) {
-      if (this.onSwitchModule) this.onSwitchModule(this.selectedModule);
+      if (this.onSelectStage) {
+        this.onSelectStage(stageIdx);
+      }
+    } else if (action.type === 'tour') {
+      const targetMod = this.selectedModule;
+      if (targetMod && targetMod !== this.getActiveModule()) {
+        if (this.onSwitchModule) this.onSwitchModule(targetMod);
+      }
+      if (this.onStartTour) {
+        this.onStartTour(this.selectedStageIndex || 0);
+      } else if (this.onToggleTour) {
+        this.onToggleTour();
+      }
+    } else if (action.type === 'stopTour') {
+      if (this.onStopTour) this.onStopTour();
+      else if (this.onToggleTour) this.onToggleTour();
+    } else if (action.type === 'spin') {
+      if (this.onStartModelSpin) {
+        this.onStartModelSpin();
+      } else if (this.onToggleModelSpin) {
+        this.onToggleModelSpin();
+      }
+    } else if (action.type === 'stopSpin') {
+      if (this.onToggleModelSpin) this.onToggleModelSpin();
+    } else if (action.type === 'pause') {
+      if (this.onTogglePause) this.onTogglePause();
+    } else if (action.type === 'recenter') {
+      if (this.onRecenterVR) this.onRecenterVR();
+    } else if (action.type === 'module') {
+      if (this.onSwitchModule) this.onSwitchModule(action.moduleId);
+      if (this.onSelectStage) this.onSelectStage(0);
     }
 
+    this.pendingAction = null;
     this.rebuildActiveButtons();
 
     if (this.sendRemoteMessage) {
@@ -495,22 +520,33 @@ export class VRRemoteBar {
     const isSpin = this.getIsModelSpinning ? this.getIsModelSpinning() : false;
     const isPause = this.getIsPaused ? this.getIsPaused() : false;
 
+    const isTourPending = this.pendingAction && this.pendingAction.type === 'tour';
+    const isStopTourPending = this.pendingAction && this.pendingAction.type === 'stopTour';
+    const tourEffective = isTourPending || (isTour && !isStopTourPending);
+
+    const isSpinPending = this.pendingAction && this.pendingAction.type === 'spin';
+    const isStopSpinPending = this.pendingAction && this.pendingAction.type === 'stopSpin';
+    const spinEffective = isSpinPending || (isSpin && !isStopSpinPending);
+
     const ctrlRowY = 0.36;
     const ctrlWidth = 0.36;
     const ctrlHeight = 0.085;
 
     this.createSubOptionButton({
       id: 'sub_btn_tour',
-      label: isTour ? '🎬 Tour: [ON]' : '🎬 Tour: [OFF]',
+      label: tourEffective ? '🎬 Tour: [ACTIVE ✔]' : '🎬 Tour: [OFF]',
       colX: -0.56,
       y: ctrlRowY,
       width: ctrlWidth,
       height: ctrlHeight,
-      color: isTour ? '#22c55e' : '#38bdf8',
-      isActive: isTour,
+      color: tourEffective ? '#22c55e' : '#38bdf8',
+      isActive: tourEffective,
       onClick: () => {
-        this.pendingAction = { type: 'tour' };
-        if (this.onToggleTour) this.onToggleTour();
+        if (tourEffective) {
+          this.pendingAction = { type: 'stopTour' };
+        } else {
+          this.pendingAction = { type: 'tour' };
+        }
         this.buildWindowContent();
         this.rebuildActiveButtons();
       }
@@ -518,16 +554,19 @@ export class VRRemoteBar {
 
     this.createSubOptionButton({
       id: 'sub_btn_spin',
-      label: isSpin ? '🔄 Spin: [ON]' : '🔄 Spin: [OFF]',
+      label: spinEffective ? '🔄 Spin: [ACTIVE ✔]' : '🔄 Spin: [OFF]',
       colX: -0.19,
       y: ctrlRowY,
       width: ctrlWidth,
       height: ctrlHeight,
-      color: isSpin ? '#f59e0b' : '#38bdf8',
-      isActive: isSpin,
+      color: spinEffective ? '#f59e0b' : '#38bdf8',
+      isActive: spinEffective,
       onClick: () => {
-        this.pendingAction = { type: 'spin' };
-        if (this.onToggleModelSpin) this.onToggleModelSpin();
+        if (spinEffective) {
+          this.pendingAction = { type: 'stopSpin' };
+        } else {
+          this.pendingAction = { type: 'spin' };
+        }
         this.buildWindowContent();
         this.rebuildActiveButtons();
       }
@@ -544,7 +583,6 @@ export class VRRemoteBar {
       isActive: isPause,
       onClick: () => {
         this.pendingAction = { type: 'pause' };
-        if (this.onTogglePause) this.onTogglePause();
         this.buildWindowContent();
         this.rebuildActiveButtons();
       }
@@ -561,7 +599,8 @@ export class VRRemoteBar {
       isActive: false,
       onClick: () => {
         this.pendingAction = { type: 'recenter' };
-        if (this.onRecenterVR) this.onRecenterVR();
+        this.buildWindowContent();
+        this.rebuildActiveButtons();
       }
     });
 
@@ -591,7 +630,7 @@ export class VRRemoteBar {
         isActive: isCur,
         onClick: () => {
           this.selectedStageIndex = i;
-          this.pendingAction = { type: 'stage', index: i };
+          this.pendingAction = { type: 'stage', index: i, moduleId: this.selectedModule };
           this.buildWindowContent();
           this.rebuildActiveButtons();
         }
@@ -614,7 +653,7 @@ export class VRRemoteBar {
         isActive: isCur,
         onClick: () => {
           this.selectedStageIndex = i;
-          this.pendingAction = { type: 'stage', index: i };
+          this.pendingAction = { type: 'stage', index: i, moduleId: this.selectedModule };
           this.buildWindowContent();
           this.rebuildActiveButtons();
         }
@@ -622,9 +661,31 @@ export class VRRemoteBar {
     }
 
     // Selected Target Banner at Bottom of Window
-    const selStage = stages[this.selectedStageIndex];
-    const selName = selStage ? `${selStage.icon || '📍'} ${selStage.name || 'Stage'}` : 'Current Target';
-    this.createWindowFooter(`👉 Selected Target: [ ${selName} ] — Click [ ✕ CLOSE ] to fly towards it!`);
+    let footerText = '👉 Click any option or stage, then click [ ✕ CLOSE ] to execute!';
+    if (this.pendingAction) {
+      if (this.pendingAction.type === 'stage') {
+        const selStage = stages[this.pendingAction.index];
+        const selName = selStage ? `${selStage.icon || '🪐'} ${selStage.shortName || selStage.name}` : `Stage ${this.pendingAction.index + 1}`;
+        footerText = `👉 Target Selected: [ ${selName} ] — Click [ ✕ CLOSE ] to fly & inspect 360° until stopped!`;
+      } else if (this.pendingAction.type === 'tour') {
+        footerText = '👉 Selected: 🎬 Stranger Things Tour — Click [ ✕ CLOSE ] to play full tour!';
+      } else if (this.pendingAction.type === 'stopTour') {
+        footerText = '👉 Selected: 🛑 Stop Tour — Click [ ✕ CLOSE ] to stop tour!';
+      } else if (this.pendingAction.type === 'spin') {
+        footerText = '👉 Selected: 🔄 360° Model Spin — Click [ ✕ CLOSE ] to start continuous rotation!';
+      } else if (this.pendingAction.type === 'stopSpin') {
+        footerText = '👉 Selected: 🛑 Stop Spin — Click [ ✕ CLOSE ] to stop rotation!';
+      } else if (this.pendingAction.type === 'pause') {
+        footerText = '👉 Selected: ⏸ Toggle Pause/Resume — Click [ ✕ CLOSE ] to execute!';
+      } else if (this.pendingAction.type === 'recenter') {
+        footerText = '👉 Selected: 🎯 Recenter VR — Click [ ✕ CLOSE ] to align heading!';
+      }
+    } else {
+      const selStage = stages[this.selectedStageIndex];
+      const selName = selStage ? `${selStage.icon || '🪐'} ${selStage.shortName || selStage.name}` : 'Current Stage';
+      footerText = `👉 Current: [ ${selName} ] — Click [ ✕ CLOSE ] to inspect 360° until stopped!`;
+    }
+    this.createWindowFooter(footerText);
   }
 
   createWindowBackButton(colX, y) {
