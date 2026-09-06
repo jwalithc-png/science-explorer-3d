@@ -88,6 +88,10 @@ export class NavigationController {
         return;
       }
 
+      if (this.isGizmoActiveCallback && this.isGizmoActiveCallback()) {
+        return;
+      }
+
       if (e.button === 0) {
         // Left click: 360° Camera & 3D Environment Orbit Rotation
         this.isDragging = true;
@@ -148,6 +152,10 @@ export class NavigationController {
     let touchStartDist = 0;
     window.addEventListener('touchstart', (e) => {
       if (e.target.closest('button, input, select, a, .hud-controls-panel, .help-card, .scientific-panel')) {
+        return;
+      }
+
+      if (this.isGizmoActiveCallback && this.isGizmoActiveCallback()) {
         return;
       }
 
@@ -320,6 +328,9 @@ export class NavigationController {
 
   applyRemoteInput(input) {
     if (input.type === 'drag') {
+      if (this.isGizmoActiveCallback && this.isGizmoActiveCallback()) {
+        return;
+      }
       this.spherical.theta -= input.dx * 0.008;
       this.spherical.phi = Math.max(0.02, Math.min(Math.PI - 0.02, this.spherical.phi - input.dy * 0.008));
       this.updateCameraFromSpherical();

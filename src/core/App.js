@@ -115,6 +115,12 @@ export class App {
 
     // 8b. 3D Blender-Style Colorful XYZ Rotation Gizmo
     this.gizmo3D = new Gizmo3D(this.sceneManager.scene, this.sceneManager.camera, this.canvas);
+    this.navigationController.isGizmoActiveCallback = () => (
+      this.gizmo3D &&
+      this.gizmo3D.gizmoRoot &&
+      this.gizmo3D.gizmoRoot.visible &&
+      (this.gizmo3D.activeHoverAxis !== null || this.gizmo3D.isDragging)
+    );
 
     // 9. In-VR Spatial Remote Window Manager with Free-Space Pointer & Object Hold Detection
     this.vrRemoteBar = new VRRemoteBar({
@@ -433,7 +439,13 @@ export class App {
           if (this.vrRemoteBar) {
             this.vrRemoteBar.onRemoteMouseClick(msg.x, msg.y);
           }
-        } else if (msg.type === 'drag' || msg.type === 'pan' || msg.type === 'wheel' || msg.type === 'cameraSide' || msg.type === 'rotateModel' || msg.type === 'stopRotateModel') {
+        } else if (msg.type === 'drag') {
+          if (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible && this.gizmo3D.activeHoverAxis) {
+            this.gizmo3D.rotateOnAxis(this.gizmo3D.activeHoverAxis, msg.dx, msg.dy);
+          } else {
+            this.navigationController.applyRemoteInput(msg);
+          }
+        } else if (msg.type === 'pan' || msg.type === 'wheel' || msg.type === 'cameraSide' || msg.type === 'rotateModel' || msg.type === 'stopRotateModel') {
           this.navigationController.applyRemoteInput(msg);
         } else if (msg.type === 'teleport') {
           this.tourController.stopTour();

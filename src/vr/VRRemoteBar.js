@@ -1365,6 +1365,26 @@ export class VRRemoteBar {
     this.objectHoldBadge.visible = false;
     this.reticleGroup.add(this.objectHoldBadge);
 
+    // 6. Blender Axis Rotation Cursor Badge
+    const gizmoBadgeCanvas = document.createElement('canvas');
+    gizmoBadgeCanvas.width = 440;
+    gizmoBadgeCanvas.height = 90;
+    this.gizmoBadgeCtx = gizmoBadgeCanvas.getContext('2d');
+    this.gizmoBadgeTexture = new THREE.CanvasTexture(gizmoBadgeCanvas);
+    this.gizmoBadgeTexture.minFilter = THREE.LinearFilter;
+    const gizmoBadgeMat = new THREE.SpriteMaterial({
+      map: this.gizmoBadgeTexture,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.96
+    });
+    this.gizmoReticleBadge = new THREE.Sprite(gizmoBadgeMat);
+    this.gizmoReticleBadge.position.set(0, -0.068, 0.01);
+    this.gizmoReticleBadge.scale.set(0.38, 0.078, 1);
+    this.gizmoReticleBadge.renderOrder = 10003;
+    this.gizmoReticleBadge.visible = false;
+    this.reticleGroup.add(this.gizmoReticleBadge);
+
     this.panelGroup.add(this.reticleGroup);
   }
 
@@ -1436,11 +1456,50 @@ export class VRRemoteBar {
     if (this.objectHoldBadge) this.objectHoldBadge.visible = false;
   }
 
+  updateGizmoReticleBadge(axis) {
+    if (!this.gizmoReticleBadge || !this.gizmoBadgeCtx) return;
+    this.gizmoReticleBadge.visible = true;
+
+    const ctx = this.gizmoBadgeCtx;
+    ctx.clearRect(0, 0, 440, 90);
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+    ctx.beginPath();
+    ctx.roundRect(4, 4, 432, 82, [18]);
+    ctx.fill();
+
+    const colors = { X: '#ef4444', Y: '#10b981', Z: '#3b82f6' };
+    const names = { X: '🔴 X Axis (Pitch)', Y: '🟢 Y Axis (Yaw)', Z: '🔵 Z Axis (Roll)' };
+    const color = colors[axis] || '#facc15';
+
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#facc15';
+    ctx.stroke();
+
+    ctx.fillStyle = color;
+    ctx.font = 'bold 24px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(names[axis] || `${axis} Axis`, 220, 32);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 18px "Inter", sans-serif';
+    ctx.fillText('Move / drag along line to rotate', 220, 62);
+
+    this.gizmoBadgeTexture.needsUpdate = true;
+  }
+
+  hideGizmoReticleBadge() {
+    if (this.gizmoReticleBadge) {
+      this.gizmoReticleBadge.visible = false;
+    }
+  }
+
   // =========================================================================
   // 8. 3D SCENE OBJECT RAYCASTING & 5-SECOND HOLD DETECTION
   // =========================================================================
   checkObjectHover(delta) {
-    if (this.isWindowOpen) {
+    if (this.isWindowOpen || (this.gizmo3D && this.gizmo3D.activeHoverAxis)) {
       if (this.objectHoldTimer > 0) {
         this.objectHoldTimer = 0;
         this.hoveredObjectStageIndex = -1;
@@ -1537,6 +1596,13 @@ export class VRRemoteBar {
     const nx = Math.max(0, Math.min(1, Number(normX) || 0));
     const ny = Math.max(0, Math.min(1, Number(normY) || 0));
 
+    const prevX = (this.lastNormX !== undefined) ? this.lastNormX : nx;
+    const prevY = (this.lastNormY !== undefined) ? this.lastNormY : ny;
+    const deltaX = (nx - prevX) * 140;
+    const deltaY = (ny - prevY) * 140;
+    this.lastNormX = nx;
+    this.lastNormY = ny;
+
     this.currentNormX = nx;
     this.currentNormY = ny;
 
@@ -1575,6 +1641,37 @@ export class VRRemoteBar {
         this.objectHoldTimer = 0;
         this.hoveredObjectStageIndex = -1;
         this.hideObjectHoldVisual();
+      }
+      this.hideGizmoReticleBadge();
+      if (this.gizmo3D) this.gizmo3D.clearHover();
+    } else {
+      // Free VR space: Check 3D Gizmo axis collision first
+      if (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible) {
+        const ndcX = nx * 2 - 1;
+        const ndcY = -(ny * 2 - 1);
+        this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+        const hoveredAxis = this.gizmo3D.checkRay(this.sceneRaycaster);
+
+        if (hoveredAxis) {
+          // Hovering over colored direction line / ring
+          this.updateGizmoReticleBadge(hoveredAxis);
+
+          // Clear 5-second object hold so it doesn't pop up over the gizmo
+          if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
+            this.objectHoldTimer = 0;
+            this.hoveredObjectStageIndex = -1;
+            this.hideObjectHoldVisual();
+          }
+
+          // Move along the axis line direction rotates the object!
+          if (Math.hypot(deltaX, deltaY) > 0.04) {
+            this.gizmo3D.rotateOnAxis(hoveredAxis, deltaX, deltaY);
+          }
+        } else {
+          this.hideGizmoReticleBadge();
+        }
+      } else {
+        this.hideGizmoReticleBadge();
       }
     }
 
