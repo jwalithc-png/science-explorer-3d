@@ -420,7 +420,7 @@
           const msg = JSON.parse(e.data);
           if (msg.type === 'menuWindowState') {
             isWindowOpen = msg.isOpen;
-            updateWindowStateUI(isWindowOpen);
+            updateWindowStateUI(isWindowOpen, msg.view);
           } else if (msg.type === 'stageChanged') {
             showToast(`Tracking: ${msg.stage ? msg.stage.name : 'Stage ' + msg.stageIndex}`);
           }
@@ -428,16 +428,20 @@
       };
     }
 
-    function updateWindowStateUI(open) {
+    function updateWindowStateUI(open, view) {
       if (open) {
         vrStateBanner.classList.add('window-open');
-        bannerText.innerHTML = '<strong>VR MENU WINDOW IS OPEN:</strong> Pick one of the 3 options, choose sub-options, and click <strong>[✕ CLOSE]</strong> to execute!';
+        if (view === 'objectPopup') {
+          bannerText.innerHTML = '<strong>🎯 3D OBJECT POPUP ACTIVE:</strong> 5-second hold triggered! Choose <strong>Blender XYZ Axes</strong> or <strong>Animation + Voiceover + BGM</strong>, then click <strong>[✕ CLOSE]</strong>!';
+        } else {
+          bannerText.innerHTML = '<strong>VR MENU WINDOW IS OPEN:</strong> Pick one of the 3 modules, choose sub-options, and click <strong>[✕ CLOSE]</strong> to execute!';
+        }
         windowStatusPill.textContent = '[WINDOW OPEN]';
         windowStatusPill.style.color = '#86efac';
         redBoxIndicator.style.opacity = '0.3';
       } else {
         vrStateBanner.classList.remove('window-open');
-        bannerText.innerHTML = '<strong>VR CLEAN VIEW:</strong> Move mouse to top Red Box [🔴 MENU] & click to open menu in Mobile VR.';
+        bannerText.innerHTML = '<strong>VR CLEAN VIEW:</strong> Hold mouse directly on any 3D object for <strong>5 seconds</strong> to inspect with Blender XYZ axes, OR click top Red Box [🔴 MENU].';
         windowStatusPill.textContent = '[WINDOW CLOSED]';
         windowStatusPill.style.color = '#cbd5e1';
         redBoxIndicator.style.opacity = '1.0';

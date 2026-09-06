@@ -41,6 +41,7 @@ import { TourController } from '../interaction/TourController.js';
 import { HUD } from '../ui/HUD.js';
 import { ScientificPanel } from '../ui/ScientificPanel.js';
 import { RemoteRelayClient } from '../remote/RemoteRelayClient.js';
+import { Gizmo3D } from '../interaction/Gizmo3D.js';
 
 // Data
 import { CONCEPTION_STAGES, CONCEPTION_SIMULATION_PARAMETERS } from '../data/conceptionStages.js';
@@ -112,11 +113,17 @@ export class App {
     // 8. 2D HUD & Scientific Panel
     this.initUI();
 
-    // 9. 4-Column In-VR Spatial Remote Controller with Head Gaze Mouse Pointer
+    // 8b. 3D Blender-Style Colorful XYZ Rotation Gizmo
+    this.gizmo3D = new Gizmo3D(this.sceneManager.scene, this.sceneManager.camera, this.canvas);
+
+    // 9. In-VR Spatial Remote Window Manager with Free-Space Pointer & Object Hold Detection
     this.vrRemoteBar = new VRRemoteBar({
       scene: this.sceneManager.scene,
       camera: this.sceneManager.camera,
       cameraRig: this.sceneManager.cameraRig,
+      gizmo3D: this.gizmo3D,
+      audioManager: this.audioManager,
+      getStageModelsCallback: () => this.stageModels,
       onSelectStage: (idx) => {
         this.tourController.stopTour();
         this.hud.setTourState(false);
@@ -583,9 +590,14 @@ export class App {
     const simSpeed = this.simParams.simSpeed !== undefined ? this.simParams.simSpeed : 1.0;
     this.tourController.update(delta * simSpeed);
 
-    // 2b. Update 4-Column In-VR Spatial Remote Controller & Head Gaze Mouse Pointer
+    // 2b. Update In-VR Spatial Remote Window Manager & Free-Space Mouse Pointer
     if (this.vrRemoteBar) {
       this.vrRemoteBar.update(delta);
+    }
+
+    // 2c. Update 3D Blender-Style Colorful XYZ Rotation Gizmo
+    if (this.gizmo3D) {
+      this.gizmo3D.update(delta);
     }
 
     // 3. Update lighting

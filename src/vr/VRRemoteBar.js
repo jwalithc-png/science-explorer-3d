@@ -21,6 +21,9 @@ export class VRRemoteBar {
     scene,
     camera,
     cameraRig,
+    gizmo3D,
+    audioManager,
+    getStageModelsCallback,
     onSelectStage,
     onToggleTour,
     onStartTour,
@@ -41,6 +44,9 @@ export class VRRemoteBar {
     this.scene = scene;
     this.camera = camera;
     this.cameraRig = cameraRig;
+    this.gizmo3D = gizmo3D;
+    this.audioManager = audioManager;
+    this.getStageModelsCallback = getStageModelsCallback;
 
     this.onSelectStage = onSelectStage;
     this.onToggleTour = onToggleTour;
@@ -60,12 +66,20 @@ export class VRRemoteBar {
     this.getActiveModule = getActiveModule;
     this.sendRemoteMessage = sendRemoteMessage;
 
-    // Window & View State
+    // Window & View State ('main3', 'subOptions', or 'objectPopup')
     this.isWindowOpen = false;
-    this.currentView = 'main3'; // 'main3' or 'subOptions'
+    this.currentView = 'main3';
     this.selectedModule = (this.getActiveModule ? this.getActiveModule() : 'solar') || 'solar';
     this.selectedStageIndex = this.getCurrentStageIndex ? this.getCurrentStageIndex() : 0;
     this.pendingAction = null; // { type: 'stage', index: number }
+    this.audioPlayingStageIndex = null;
+
+    // 3D Scene Direct Object Selection (Hold 5 seconds)
+    this.sceneRaycaster = new THREE.Raycaster();
+    this.hoveredObjectStageIndex = -1;
+    this.objectHoldTimer = 0;
+    this.currentNormX = 0.5;
+    this.currentNormY = 0.5;
 
     this.buttons = [];
     this.hoveredButton = null;
@@ -202,10 +216,41 @@ export class VRRemoteBar {
     }
   }
 
+  openObjectPopupWindow(stageIndex) {
+    this.isWindowOpen = true;
+    this.windowGroup.visible = true;
+    this.redBoxGroup.visible = false;
+    this.currentView = 'objectPopup';
+    this.selectedStageIndex = stageIndex;
+    this.pendingAction = { type: 'stage', index: stageIndex, moduleId: this.selectedModule };
+
+    // Move camera to focus smoothly on this object
+    if (this.onSelectStage) {
+      this.onSelectStage(stageIndex);
+    }
+
+    this.buildWindowContent();
+    this.rebuildActiveButtons();
+
+    if (this.sendRemoteMessage) {
+      this.sendRemoteMessage({ type: 'menuWindowState', isOpen: true, view: 'objectPopup', stageIndex });
+    }
+  }
+
   closeWindowAndExecute() {
     this.isWindowOpen = false;
     this.windowGroup.visible = false;
     this.redBoxGroup.visible = true;
+
+    // If closing from objectPopup view, keep everything user activated running in clean VR!
+    if (this.currentView === 'objectPopup') {
+      this.pendingAction = null;
+      this.rebuildActiveButtons();
+      if (this.sendRemoteMessage) {
+        this.sendRemoteMessage({ type: 'menuWindowState', isOpen: false });
+      }
+      return;
+    }
 
     // Use pending action or fallback to selected stage
     const action = this.pendingAction || { type: 'stage', index: this.selectedStageIndex, moduleId: this.selectedModule };
@@ -258,7 +303,7 @@ export class VRRemoteBar {
   }
 
   // =========================================================================
-  // 3. WINDOW CONTENT BUILDER (3 OPTIONS VS SUB-OPTIONS)
+  // 3. WINDOW CONTENT BUILDER (MAIN 3 / SUB-OPTIONS / OBJECT POPUP)
   // =========================================================================
   buildWindowContent() {
     // Clear previous window children
@@ -299,8 +344,10 @@ export class VRRemoteBar {
 
     if (this.currentView === 'main3') {
       this.buildMain3OptionsView();
-    } else {
+    } else if (this.currentView === 'subOptions') {
       this.buildSubOptionsView();
+    } else if (this.currentView === 'objectPopup') {
+      this.buildObjectPopupWindow(this.selectedStageIndex);
     }
   }
 
@@ -950,6 +997,269 @@ export class VRRemoteBar {
   }
 
   // =========================================================================
+  // 5B. VIEW 3: OBJECT DETAILS & 3D BLENDER AXES / ANIMATION POPUP WINDOW
+  // =========================================================================
+  buildObjectPopupWindow(stageIndex) {
+    this.windowButtons = [];
+    const stages = this.getStagesCallback ? this.getStagesCallback() : [];
+    const stage = stages[stageIndex];
+    if (!stage) return;
+
+    // Window Header Title
+    const headerTitle = `${stage.icon || '🪐'} ${stage.name.toUpperCase()}`;
+    this.createWindowHeader(headerTitle, 0.05, 0.52);
+
+    // [ ← BACK ] Button on top-left to return to all options
+    this.createWindowBackButton(-0.68, 0.52);
+
+    // 1. Stage Detail Scientific Info Card (Top Block: Y = +0.32)
+    this.createStageDetailInfoCard(stage, 0, 0.32);
+
+    // 2. Section 1: Blender-Style Colorful XYZ Rotation Axes (Y = +0.12 to 0.00)
+    const isGizmoAttached = (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible);
+
+    // Main Toggle Button for Blender Axes
+    this.createSubOptionButton({
+      id: 'obj_btn_axes_toggle',
+      label: isGizmoAttached ? '🎮 Blender XYZ Axes: [ACTIVE ✔]' : '🎮 Show Blender XYZ Colorful Axes',
+      colX: 0,
+      y: 0.12,
+      width: 1.48,
+      height: 0.10,
+      color: isGizmoAttached ? '#22c55e' : '#38bdf8',
+      isActive: isGizmoAttached,
+      onClick: () => {
+        if (this.gizmo3D) {
+          if (this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible) {
+            this.gizmo3D.detach();
+          } else {
+            const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
+            const model = models[stageIndex];
+            if (model) {
+              this.gizmo3D.attach(model);
+            }
+          }
+        }
+        this.buildWindowContent();
+        this.rebuildActiveButtons();
+      }
+    });
+
+    // 4 Direct Axis Rotation Buttons (Pitch X 🔴, Yaw Y 🟢, Roll Z 🔵, Auto Spin 🔄)
+    const axisY = 0.00;
+    const axisW = 0.35;
+    const axisH = 0.085;
+
+    this.createSubOptionButton({
+      id: 'obj_btn_rot_x',
+      label: '🔴 Pitch (X) +15°',
+      colX: -0.56,
+      y: axisY,
+      width: axisW,
+      height: axisH,
+      color: '#ef4444',
+      isActive: false,
+      onClick: () => {
+        if (this.gizmo3D) {
+          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
+          const model = models[stageIndex];
+          if (model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
+            this.gizmo3D.attach(model);
+          }
+          this.gizmo3D.rotateAxis('X', 0.26);
+        }
+      }
+    });
+
+    this.createSubOptionButton({
+      id: 'obj_btn_rot_y',
+      label: '🟢 Yaw (Y) +15°',
+      colX: -0.19,
+      y: axisY,
+      width: axisW,
+      height: axisH,
+      color: '#10b981',
+      isActive: false,
+      onClick: () => {
+        if (this.gizmo3D) {
+          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
+          const model = models[stageIndex];
+          if (model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
+            this.gizmo3D.attach(model);
+          }
+          this.gizmo3D.rotateAxis('Y', 0.26);
+        }
+      }
+    });
+
+    this.createSubOptionButton({
+      id: 'obj_btn_rot_z',
+      label: '🔵 Roll (Z) +15°',
+      colX: 0.19,
+      y: axisY,
+      width: axisW,
+      height: axisH,
+      color: '#3b82f6',
+      isActive: false,
+      onClick: () => {
+        if (this.gizmo3D) {
+          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
+          const model = models[stageIndex];
+          if (model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
+            this.gizmo3D.attach(model);
+          }
+          this.gizmo3D.rotateAxis('Z', 0.26);
+        }
+      }
+    });
+
+    const isSpinning = (this.gizmo3D && this.gizmo3D.continuousSpinAxis) || (this.getIsModelSpinning && this.getIsModelSpinning());
+    this.createSubOptionButton({
+      id: 'obj_btn_rot_spin',
+      label: isSpinning ? '🔄 Auto Spin: [ON]' : '🔄 Auto Spin',
+      colX: 0.56,
+      y: axisY,
+      width: axisW,
+      height: axisH,
+      color: isSpinning ? '#f59e0b' : '#38bdf8',
+      isActive: isSpinning,
+      onClick: () => {
+        if (isSpinning) {
+          if (this.gizmo3D) this.gizmo3D.stopContinuousRotation();
+          if (this.onToggleModelSpin) this.onToggleModelSpin();
+        } else {
+          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
+          const model = models[stageIndex];
+          if (this.gizmo3D && model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
+            this.gizmo3D.attach(model);
+          }
+          if (this.gizmo3D) this.gizmo3D.startContinuousRotation('Y');
+          if (this.onStartModelSpin) this.onStartModelSpin();
+        }
+        this.buildWindowContent();
+        this.rebuildActiveButtons();
+      }
+    });
+
+    // 3. Section 2: Play Animation + Voiceover + BGM (Stranger Things Soundtrack)
+    const isAudioActive = (this.audioPlayingStageIndex === stageIndex);
+    this.createSubOptionButton({
+      id: 'obj_btn_anim_voice_bgm',
+      label: isAudioActive ? '🎬 Animation + Voiceover + BGM: [PLAYING ✔]' : '🎬 Play Animation + Voiceover + BGM',
+      colX: -0.22,
+      y: -0.16,
+      width: 1.02,
+      height: 0.12,
+      color: isAudioActive ? '#22c55e' : '#e11d48',
+      isActive: isAudioActive,
+      onClick: () => {
+        this.audioPlayingStageIndex = stageIndex;
+        if (this.audioManager) {
+          this.audioManager.init();
+          this.audioManager.resume();
+          this.audioManager.playTourSoundtrack();
+          const speechText = stage.narration || stage.description;
+          this.audioManager.speakNarration(speechText);
+        }
+        if (this.onStartModelSpin) {
+          this.onStartModelSpin();
+        }
+        this.buildWindowContent();
+        this.rebuildActiveButtons();
+      }
+    });
+
+    this.createSubOptionButton({
+      id: 'obj_btn_stop_audio',
+      label: '⏹ Stop Audio',
+      colX: 0.54,
+      y: -0.16,
+      width: 0.42,
+      height: 0.12,
+      color: '#94a3b8',
+      isActive: false,
+      onClick: () => {
+        this.audioPlayingStageIndex = null;
+        if (this.audioManager) {
+          this.audioManager.stopNarration();
+          this.audioManager.stopTourSoundtrack();
+        }
+        this.buildWindowContent();
+        this.rebuildActiveButtons();
+      }
+    });
+
+    // Helpful Footer Instructions
+    this.createWindowFooter('💡 Click [ ✕ CLOSE ] to interact in clean VR — axes & animation will keep running!');
+  }
+
+  createStageDetailInfoCard(stage, colX, y) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 900;
+    canvas.height = 140;
+    const ctx = canvas.getContext('2d');
+
+    // Translucent dark container
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
+    ctx.beginPath();
+    ctx.roundRect(4, 4, 892, 132, [16]);
+    ctx.fill();
+
+    // Subtle neon border
+    const themeColor = stage.colorTheme || '#38bdf8';
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = themeColor;
+    ctx.stroke();
+
+    // Subtitle / Classification
+    ctx.fillStyle = themeColor;
+    ctx.font = 'bold 22px "Inter", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(stage.subtitle || '3D Scientific Stage', 24, 16);
+
+    // Description text (wrapped nicely)
+    ctx.fillStyle = '#f1f5f9';
+    ctx.font = '500 18px "Inter", sans-serif';
+    const desc = stage.description || '';
+    const words = desc.split(' ');
+    let line1 = '', line2 = '';
+    for (const w of words) {
+      if (line1.length < 75) {
+        line1 += (line1 ? ' ' : '') + w;
+      } else if (line2.length < 80) {
+        line2 += (line2 ? ' ' : '') + w;
+      }
+    }
+    if (line2.length >= 80) line2 += '...';
+    ctx.fillText(line1, 24, 48);
+    if (line2) ctx.fillText(line2, 24, 74);
+
+    // Key fact bullet
+    if (stage.keyPoints && stage.keyPoints[0]) {
+      ctx.fillStyle = '#fef08a';
+      ctx.font = '600 17px "Inter", sans-serif';
+      ctx.fillText(`• ${stage.keyPoints[0]}`, 24, 104);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearFilter;
+
+    const geo = new THREE.PlaneGeometry(1.50, 0.23);
+    const mat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthTest: false
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(colX, y, 0.008);
+    mesh.renderOrder = 955;
+    this.windowGroup.add(mesh);
+  }
+
+  // =========================================================================
   // 6. ACTIVE BUTTONS REBUILDER (Hit-Testing Pool)
   // =========================================================================
   rebuildActiveButtons() {
@@ -972,7 +1282,7 @@ export class VRRemoteBar {
   }
 
   // =========================================================================
-  // 7. FREE-SPACE CIRCLE MOUSE POINTER
+  // 7. FREE-SPACE CIRCLE MOUSE POINTER & 5-SECOND OBJECT HOLD INDICATOR
   // =========================================================================
   createMouseReticle() {
     this.reticleGroup = new THREE.Group();
@@ -1005,7 +1315,7 @@ export class VRRemoteBar {
     this.targetRing.renderOrder = 9999;
     this.reticleGroup.add(this.targetRing);
 
-    // 3. Dynamic Progress Dwell Ring (green glow)
+    // 3. Dynamic Progress Dwell Ring for UI Buttons (green glow)
     this.dwellGeo = new THREE.RingGeometry(0.032, 0.042, 32, 1, 0, 0.001);
     this.dwellMat = new THREE.MeshBasicMaterial({
       color: 0x22c55e,
@@ -1019,6 +1329,41 @@ export class VRRemoteBar {
     this.dwellMesh.renderOrder = 10000;
     this.dwellMesh.visible = false;
     this.reticleGroup.add(this.dwellMesh);
+
+    // 4. 5-Second Direct Object Selection Hold Progress Ring (amber gold glow)
+    this.objectHoldRingGeo = new THREE.RingGeometry(0.038, 0.048, 48, 1, 0, 0.001);
+    this.objectHoldRingMat = new THREE.MeshBasicMaterial({
+      color: 0xf59e0b,
+      side: THREE.DoubleSide,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.95
+    });
+    this.objectHoldRingMesh = new THREE.Mesh(this.objectHoldRingGeo, this.objectHoldRingMat);
+    this.objectHoldRingMesh.rotation.z = Math.PI * 0.5;
+    this.objectHoldRingMesh.renderOrder = 10001;
+    this.objectHoldRingMesh.visible = false;
+    this.reticleGroup.add(this.objectHoldRingMesh);
+
+    // 5. 5-Second Object Selection Hold Floating Badge
+    const badgeCanvas = document.createElement('canvas');
+    badgeCanvas.width = 460;
+    badgeCanvas.height = 100;
+    this.badgeCtx = badgeCanvas.getContext('2d');
+    this.badgeTexture = new THREE.CanvasTexture(badgeCanvas);
+    this.badgeTexture.minFilter = THREE.LinearFilter;
+    const badgeMat = new THREE.SpriteMaterial({
+      map: this.badgeTexture,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.96
+    });
+    this.objectHoldBadge = new THREE.Sprite(badgeMat);
+    this.objectHoldBadge.position.set(0, 0.082, 0.01);
+    this.objectHoldBadge.scale.set(0.40, 0.09, 1);
+    this.objectHoldBadge.renderOrder = 10002;
+    this.objectHoldBadge.visible = false;
+    this.reticleGroup.add(this.objectHoldBadge);
 
     this.panelGroup.add(this.reticleGroup);
   }
@@ -1035,12 +1380,165 @@ export class VRRemoteBar {
     this.dwellMesh.geometry = new THREE.RingGeometry(0.032, 0.042, 32, 1, 0, arc);
   }
 
+  updateObjectHoldVisual(stage, progress, seconds) {
+    if (!this.objectHoldRingMesh || !this.objectHoldBadge) return;
+    this.objectHoldRingMesh.visible = true;
+    this.objectHoldBadge.visible = true;
+
+    const arc = Math.max(0.001, Math.min(progress * Math.PI * 2, Math.PI * 2));
+    this.objectHoldRingMesh.geometry.dispose();
+    this.objectHoldRingMesh.geometry = new THREE.RingGeometry(0.038, 0.048, 48, 1, 0, arc);
+
+    const ctx = this.badgeCtx;
+    ctx.clearRect(0, 0, 460, 100);
+
+    // Dark sleek container
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.beginPath();
+    ctx.roundRect(4, 4, 452, 92, [18]);
+    ctx.fill();
+
+    // Amber border
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#f59e0b';
+    ctx.stroke();
+
+    // Stage Name
+    const name = stage ? `${stage.icon || '🪐'} ${stage.shortName || stage.name}` : '3D Object';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px "Inter", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, 18, 32);
+
+    // Countdown
+    const remaining = Math.max(0, 5.0 - seconds).toFixed(1);
+    ctx.fillStyle = '#fef08a';
+    ctx.font = '600 20px "Inter", sans-serif';
+    ctx.fillText(`Hold: ${seconds.toFixed(1)}s / 5.0s (Pop in ${remaining}s)`, 18, 66);
+
+    // Mini progress bar in badge
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.beginPath();
+    ctx.roundRect(300, 58, 140, 14, [7]);
+    ctx.fill();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.roundRect(300, 58, Math.max(8, 140 * progress), 14, [7]);
+    ctx.fill();
+
+    this.badgeTexture.needsUpdate = true;
+  }
+
+  hideObjectHoldVisual() {
+    if (this.objectHoldRingMesh) this.objectHoldRingMesh.visible = false;
+    if (this.objectHoldBadge) this.objectHoldBadge.visible = false;
+  }
+
   // =========================================================================
-  // 8. REAL-TIME REMOTE MOUSE DRIVING
+  // 8. 3D SCENE OBJECT RAYCASTING & 5-SECOND HOLD DETECTION
+  // =========================================================================
+  checkObjectHover(delta) {
+    if (this.isWindowOpen) {
+      if (this.objectHoldTimer > 0) {
+        this.objectHoldTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
+      }
+      return;
+    }
+
+    const nx = this.currentNormX !== undefined ? this.currentNormX : 0.5;
+    const ny = this.currentNormY !== undefined ? this.currentNormY : 0.5;
+    const ndcX = nx * 2 - 1;
+    const ndcY = -(ny * 2 - 1);
+    this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+
+    const stages = this.getStagesCallback ? this.getStagesCallback() : [];
+    const stageModels = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
+    if (!stages || stages.length === 0) return;
+
+    let hitStageIdx = -1;
+    let bestDist = Infinity;
+    const camPos = this.camera.position;
+    const worldPos = new THREE.Vector3();
+
+    for (let i = 0; i < stages.length; i++) {
+      const st = stages[i];
+      const model = stageModels[i];
+      if (!st) continue;
+
+      worldPos.set(0, 0, 0);
+      if (model) {
+        if (model.getWorldPosition) {
+          model.getWorldPosition(worldPos);
+        } else if (model.group && model.group.getWorldPosition) {
+          model.group.getWorldPosition(worldPos);
+        } else if (model.isObject3D) {
+          model.getWorldPosition(worldPos);
+        }
+      }
+      if (worldPos.lengthSq() < 0.001 && st.lookAt) {
+        worldPos.set(st.lookAt.x, st.lookAt.y || 0, st.lookAt.z || 0);
+      }
+
+      // Check if in front of camera
+      const toObj = worldPos.clone().sub(camPos);
+      if (this.sceneRaycaster.ray.direction.dot(toObj) <= 0) continue;
+
+      const distToRay = this.sceneRaycaster.ray.distanceToPoint(worldPos);
+      const r = st.radius || 2.0;
+      const hitThreshold = Math.max(3.2, r * 2.8);
+
+      if (distToRay < hitThreshold) {
+        const distToCam = camPos.distanceTo(worldPos);
+        if (distToCam < bestDist) {
+          bestDist = distToCam;
+          hitStageIdx = i;
+        }
+      }
+    }
+
+    if (hitStageIdx !== -1) {
+      if (this.hoveredObjectStageIndex === hitStageIdx) {
+        this.objectHoldTimer += delta;
+      } else {
+        this.hoveredObjectStageIndex = hitStageIdx;
+        this.objectHoldTimer = 0;
+      }
+
+      const stage = stages[hitStageIdx];
+      const holdProgress = Math.min(this.objectHoldTimer / 5.0, 1.0);
+      this.updateObjectHoldVisual(stage, holdProgress, this.objectHoldTimer);
+
+      if (this.objectHoldTimer >= 5.0) {
+        this.objectHoldTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
+        if (navigator.vibrate) {
+          try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+        }
+        this.openObjectPopupWindow(hitStageIdx);
+      }
+    } else {
+      if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
+        this.objectHoldTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
+      }
+    }
+  }
+
+  // =========================================================================
+  // 9. REAL-TIME REMOTE MOUSE DRIVING
   // =========================================================================
   onRemoteMouseMove(normX, normY) {
     const nx = Math.max(0, Math.min(1, Number(normX) || 0));
     const ny = Math.max(0, Math.min(1, Number(normY) || 0));
+
+    this.currentNormX = nx;
+    this.currentNormY = ny;
 
     // Map normalized [0, 1] to full interactive VR space:
     // Width = 2.4m (X from -1.2 to +1.2)
@@ -1069,6 +1567,14 @@ export class VRRemoteBar {
       ) {
         hitButton = btn;
         break;
+      }
+    }
+
+    if (hitButton) {
+      if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
+        this.objectHoldTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
       }
     }
 
@@ -1181,6 +1687,17 @@ export class VRRemoteBar {
       if (this.dwellTime > 0) {
         this.dwellTime = 0;
         this.updateDwellProgress(0);
+      }
+
+      // Check 3D scene direct object selection hold when free space is hovered
+      if (!this.isWindowOpen) {
+        this.checkObjectHover(delta);
+      } else {
+        if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
+          this.objectHoldTimer = 0;
+          this.hoveredObjectStageIndex = -1;
+          this.hideObjectHoldVisual();
+        }
       }
     }
   }
