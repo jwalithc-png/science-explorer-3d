@@ -34,6 +34,7 @@ import { LivingCosmicEnvironment } from '../models/LivingCosmicEnvironment.js';
 // VR, UI & Interaction
 import { WebXRManager } from '../vr/WebXRManager.js';
 import { VRInfoCard } from '../ui/VRInfoCard.js';
+import { VRRemoteBar } from '../vr/VRRemoteBar.js';
 import { BillboardLabels } from '../ui/BillboardLabels.js';
 import { NavigationController } from '../interaction/NavigationController.js';
 import { TourController } from '../interaction/TourController.js';
@@ -111,13 +112,53 @@ export class App {
     // 8. 2D HUD & Scientific Panel
     this.initUI();
 
-    // 9. Remote Control WebSocket Relay
+    // 9. 4-Column In-VR Spatial Remote Controller with Head Gaze Mouse Pointer
+    this.vrRemoteBar = new VRRemoteBar({
+      scene: this.sceneManager.scene,
+      camera: this.sceneManager.camera,
+      cameraRig: this.sceneManager.cameraRig,
+      onSelectStage: (idx) => {
+        this.tourController.stopTour();
+        this.hud.setTourState(false);
+        this.selectStage(idx);
+      },
+      onToggleTour: () => {
+        const isPlaying = this.tourController.toggleTour();
+        this.hud.setTourState(isPlaying);
+        return isPlaying;
+      },
+      onToggleModelSpin: () => {
+        const nav = this.navigationController;
+        if (nav.spinningModelIndex >= 0) {
+          nav.stopRotatingModel();
+        } else {
+          nav.startRotatingCurrentModel();
+        }
+      },
+      onTogglePause: () => {
+        this.hud.togglePause();
+      },
+      onRecenterVR: () => {
+        this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
+      },
+      onSwitchModule: (modId) => {
+        this.hud.switchModule(modId);
+      },
+      getStagesCallback: () => this.navigationController.stages,
+      getCurrentStageIndex: () => this.navigationController.currentStageIndex,
+      getIsTourPlaying: () => this.tourController.isPlaying,
+      getIsModelSpinning: () => this.navigationController.spinningModelIndex >= 0,
+      getIsPaused: () => (this.simParams.simSpeed === 0),
+      getActiveModule: () => this.activeModule
+    });
+
+    // 10. Remote Control WebSocket Relay
     this.initRemoteRelay();
 
-    // 10. Global Keyboard Shortcuts
+    // 11. Global Keyboard Shortcuts
     this.initKeyboardShortcuts();
 
-    // 11. Initialize with default module (Solar System)
+    // 12. Initialize with default module (Solar System)
     this.switchModule('solar');
 
     // Start Master Render Loop
@@ -280,6 +321,11 @@ export class App {
     this.tourController.stopTour();
     this.hud.setTourState(false);
 
+    // 12. Rebuild 4 columns in VR Remote Bar for active module
+    if (this.vrRemoteBar) {
+      this.vrRemoteBar.build4Columns();
+    }
+
     console.log(`🔬 Switched to module: ${moduleConfig.name}`);
   }
 
@@ -415,6 +461,12 @@ export class App {
       } else if (e.key.toLowerCase() === 'i') {
         // I = Flip VR 180° orientation
         this.sceneManager.flipVR180();
+      } else if (e.key.toLowerCase() === 'v') {
+        // V = Toggle 4-Column In-VR Remote Controller
+        if (this.vrRemoteBar) {
+          const vis = !this.vrRemoteBar.panelGroup.visible;
+          this.vrRemoteBar.setVisible(vis);
+        }
       } else if (e.key.toLowerCase() === 'm') {
         const isMuted = this.audioManager.toggleMute();
         const icon = document.querySelector('#audioIcon');
@@ -454,6 +506,9 @@ export class App {
     this.hud.setActiveStage(stageIndex);
     this.scientificPanel.showStage(stageIndex);
     this.vrInfoCard.updateCard(stageIndex);
+    if (this.vrRemoteBar) {
+      this.vrRemoteBar.updateButtons();
+    }
 
     // Auto-recenter VR heading towards the active planet
     if (this.sceneManager.isDualScreenVR) {
@@ -489,6 +544,11 @@ export class App {
     // 2. Update guided tour
     const simSpeed = this.simParams.simSpeed !== undefined ? this.simParams.simSpeed : 1.0;
     this.tourController.update(delta * simSpeed);
+
+    // 2b. Update 4-Column In-VR Spatial Remote Controller & Head Gaze Mouse Pointer
+    if (this.vrRemoteBar) {
+      this.vrRemoteBar.update(delta);
+    }
 
     // 3. Update lighting
     this.lighting.update(delta, this.simParams);

@@ -238,6 +238,10 @@ export class HUD {
                   <td><strong>Toggle Full Visual Tour & Stranger Things Music</strong></td>
                 </tr>
                 <tr>
+                  <td><span class="kbd-chip">V</span></td>
+                  <td><strong>Toggle 4-Column In-VR Remote Controller & Head Gaze Pointer</strong></td>
+                </tr>
+                <tr>
                   <td><span class="kbd-chip">Tab</span></td>
                   <td><strong>Cycle Modules</strong> (Solar ➔ Plant ➔ Conception)</td>
                 </tr>
