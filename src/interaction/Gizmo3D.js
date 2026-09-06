@@ -50,12 +50,12 @@ export class Gizmo3D {
   }
 
   buildAxisRingsAndLines() {
-    const ringRadius = 1.0;
-    const ringTubeRadius = 0.038;
-    const hitTubeRadius = 0.22; // Thicker invisible hit-proxy for effortless mouse targeting
-    const lineRadius = 0.022;
-    const lineLength = 2.2;
-    const hitLineRadius = 0.20;
+    const ringRadius = 0.85;
+    const ringTubeRadius = 0.022;
+    const hitTubeRadius = 0.16; // Invisible hit-proxy for effortless mouse targeting
+    const lineRadius = 0.016;
+    const lineLength = 1.05; // Compact, smaller lines
+    const hitLineRadius = 0.15;
 
     const hitMaterial = new THREE.MeshBasicMaterial({ visible: false });
 
@@ -84,22 +84,22 @@ export class Gizmo3D {
     this.gizmoRoot.add(lineX);
     this.visuals.X.push(lineX);
 
-    const geoArrowX = new THREE.ConeGeometry(0.065, 0.16, 16);
+    const geoArrowX = new THREE.ConeGeometry(0.045, 0.11, 16);
     const arrowX = new THREE.Mesh(geoArrowX, this.materials.X);
-    arrowX.position.set(lineLength * 0.5 + 0.08, 0, 0);
+    arrowX.position.set(lineLength * 0.5 + 0.05, 0, 0);
     arrowX.rotation.z = -Math.PI / 2;
     arrowX.renderOrder = 999;
     this.gizmoRoot.add(arrowX);
     this.visuals.X.push(arrowX);
 
-    const hitLineGeoX = new THREE.CylinderGeometry(hitLineRadius, hitLineRadius, lineLength + 0.3, 8);
+    const hitLineGeoX = new THREE.CylinderGeometry(hitLineRadius, hitLineRadius, lineLength + 0.15, 8);
     const hitLineX = new THREE.Mesh(hitLineGeoX, hitMaterial);
     hitLineX.rotation.z = Math.PI / 2;
     hitLineX.userData = { axis: 'X', isGizmo: true };
     this.gizmoRoot.add(hitLineX);
     this.hitObjects.push(hitLineX);
 
-    this.createAxisBadge('X', 0xef4444, new THREE.Vector3(ringRadius + 0.28, 0, 0));
+    this.createAxisBadge('X', 0xef4444, new THREE.Vector3(ringRadius + 0.16, 0, 0));
 
     // =========================================================================
     // 2. GREEN Y AXIS (Yaw: XZ Plane ring + Y Direction Line & Cone Arrow)
@@ -125,20 +125,20 @@ export class Gizmo3D {
     this.gizmoRoot.add(lineY);
     this.visuals.Y.push(lineY);
 
-    const geoArrowY = new THREE.ConeGeometry(0.065, 0.16, 16);
+    const geoArrowY = new THREE.ConeGeometry(0.045, 0.11, 16);
     const arrowY = new THREE.Mesh(geoArrowY, this.materials.Y);
-    arrowY.position.set(0, lineLength * 0.5 + 0.08, 0);
+    arrowY.position.set(0, lineLength * 0.5 + 0.05, 0);
     arrowY.renderOrder = 999;
     this.gizmoRoot.add(arrowY);
     this.visuals.Y.push(arrowY);
 
-    const hitLineGeoY = new THREE.CylinderGeometry(hitLineRadius, hitLineRadius, lineLength + 0.3, 8);
+    const hitLineGeoY = new THREE.CylinderGeometry(hitLineRadius, hitLineRadius, lineLength + 0.15, 8);
     const hitLineY = new THREE.Mesh(hitLineGeoY, hitMaterial);
     hitLineY.userData = { axis: 'Y', isGizmo: true };
     this.gizmoRoot.add(hitLineY);
     this.hitObjects.push(hitLineY);
 
-    this.createAxisBadge('Y', 0x10b981, new THREE.Vector3(0, ringRadius + 0.28, 0));
+    this.createAxisBadge('Y', 0x10b981, new THREE.Vector3(0, ringRadius + 0.16, 0));
 
     // =========================================================================
     // 3. BLUE Z AXIS (Roll: XY Plane ring + Z Direction Line & Cone Arrow)
@@ -163,22 +163,22 @@ export class Gizmo3D {
     this.gizmoRoot.add(lineZ);
     this.visuals.Z.push(lineZ);
 
-    const geoArrowZ = new THREE.ConeGeometry(0.065, 0.16, 16);
+    const geoArrowZ = new THREE.ConeGeometry(0.045, 0.11, 16);
     const arrowZ = new THREE.Mesh(geoArrowZ, this.materials.Z);
-    arrowZ.position.set(0, 0, lineLength * 0.5 + 0.08);
+    arrowZ.position.set(0, 0, lineLength * 0.5 + 0.05);
     arrowZ.rotation.x = Math.PI / 2;
     arrowZ.renderOrder = 999;
     this.gizmoRoot.add(arrowZ);
     this.visuals.Z.push(arrowZ);
 
-    const hitLineGeoZ = new THREE.CylinderGeometry(hitLineRadius, hitLineRadius, lineLength + 0.3, 8);
+    const hitLineGeoZ = new THREE.CylinderGeometry(hitLineRadius, hitLineRadius, lineLength + 0.15, 8);
     const hitLineZ = new THREE.Mesh(hitLineGeoZ, hitMaterial);
     hitLineZ.rotation.x = Math.PI / 2;
     hitLineZ.userData = { axis: 'Z', isGizmo: true };
     this.gizmoRoot.add(hitLineZ);
     this.hitObjects.push(hitLineZ);
 
-    this.createAxisBadge('Z', 0x3b82f6, new THREE.Vector3(0, 0, ringRadius + 0.28));
+    this.createAxisBadge('Z', 0x3b82f6, new THREE.Vector3(0, 0, ringRadius + 0.16));
   }
 
   createAxisBadge(text, colorHex, pos) {
@@ -206,7 +206,7 @@ export class Gizmo3D {
     const mat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
     const sprite = new THREE.Sprite(mat);
     sprite.position.copy(pos);
-    sprite.scale.set(0.36, 0.36, 1);
+    sprite.scale.set(0.22, 0.22, 1);
     sprite.renderOrder = 1000;
     sprite.userData = { axis: text, isGizmo: true };
     this.gizmoRoot.add(sprite);
@@ -354,10 +354,10 @@ export class Gizmo3D {
       this.gizmoRoot.quaternion.copy(this.targetGroup.getWorldQuaternion(new THREE.Quaternion()));
     }
 
-    // Screen-space constant scale based on camera distance
+    // Screen-space constant scale based on camera distance - compact & smaller, tightly fitted
     const dist = this.camera.position.distanceTo(this.centerPos);
-    const r = this.selectedBody.radius || 2.0;
-    const scaleFactor = Math.max(r * 1.5, Math.min(dist * 0.18, 30));
+    const r = this.selectedBody.radius || (this.selectedBody.data && this.selectedBody.data.radius) || 1.8;
+    const scaleFactor = Math.max(r * 1.12, Math.min(dist * 0.08, 6.0));
     this.gizmoRoot.scale.set(scaleFactor, scaleFactor, scaleFactor);
   }
 

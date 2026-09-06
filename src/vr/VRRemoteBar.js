@@ -1015,17 +1015,16 @@ export class VRRemoteBar {
     // 1. Stage Detail Scientific Info Card (Top Block: Y = +0.32)
     this.createStageDetailInfoCard(stage, 0, 0.32);
 
-    // 2. Section 1: Blender-Style Colorful XYZ Rotation Axes (Y = +0.12 to 0.00)
+    // 2. Section 1: Single Option for 3D XYZ Rotation (Blender-Style Compact Gizmo)
     const isGizmoAttached = (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible);
 
-    // Main Toggle Button for Blender Axes
     this.createSubOptionButton({
       id: 'obj_btn_axes_toggle',
-      label: isGizmoAttached ? '🎮 Blender XYZ Axes: [ACTIVE ✔]' : '🎮 Show Blender XYZ Colorful Axes',
+      label: isGizmoAttached ? '🎮 3D XYZ Rotation: [ACTIVE ✔]' : '🎮 3D XYZ Rotation: [OFF]',
       colX: 0,
-      y: 0.12,
+      y: 0.08,
       width: 1.48,
-      height: 0.10,
+      height: 0.11,
       color: isGizmoAttached ? '#22c55e' : '#38bdf8',
       isActive: isGizmoAttached,
       onClick: () => {
@@ -1045,111 +1044,15 @@ export class VRRemoteBar {
       }
     });
 
-    // 4 Direct Axis Rotation Buttons (Pitch X 🔴, Yaw Y 🟢, Roll Z 🔵, Auto Spin 🔄)
-    const axisY = 0.00;
-    const axisW = 0.35;
-    const axisH = 0.085;
-
-    this.createSubOptionButton({
-      id: 'obj_btn_rot_x',
-      label: '🔴 Pitch (X) +15°',
-      colX: -0.56,
-      y: axisY,
-      width: axisW,
-      height: axisH,
-      color: '#ef4444',
-      isActive: false,
-      onClick: () => {
-        if (this.gizmo3D) {
-          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
-          const model = models[stageIndex];
-          if (model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
-            this.gizmo3D.attach(model);
-          }
-          this.gizmo3D.rotateAxis('X', 0.26);
-        }
-      }
-    });
-
-    this.createSubOptionButton({
-      id: 'obj_btn_rot_y',
-      label: '🟢 Yaw (Y) +15°',
-      colX: -0.19,
-      y: axisY,
-      width: axisW,
-      height: axisH,
-      color: '#10b981',
-      isActive: false,
-      onClick: () => {
-        if (this.gizmo3D) {
-          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
-          const model = models[stageIndex];
-          if (model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
-            this.gizmo3D.attach(model);
-          }
-          this.gizmo3D.rotateAxis('Y', 0.26);
-        }
-      }
-    });
-
-    this.createSubOptionButton({
-      id: 'obj_btn_rot_z',
-      label: '🔵 Roll (Z) +15°',
-      colX: 0.19,
-      y: axisY,
-      width: axisW,
-      height: axisH,
-      color: '#3b82f6',
-      isActive: false,
-      onClick: () => {
-        if (this.gizmo3D) {
-          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
-          const model = models[stageIndex];
-          if (model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
-            this.gizmo3D.attach(model);
-          }
-          this.gizmo3D.rotateAxis('Z', 0.26);
-        }
-      }
-    });
-
-    const isSpinning = (this.gizmo3D && this.gizmo3D.continuousSpinAxis) || (this.getIsModelSpinning && this.getIsModelSpinning());
-    this.createSubOptionButton({
-      id: 'obj_btn_rot_spin',
-      label: isSpinning ? '🔄 Auto Spin: [ON]' : '🔄 Auto Spin',
-      colX: 0.56,
-      y: axisY,
-      width: axisW,
-      height: axisH,
-      color: isSpinning ? '#f59e0b' : '#38bdf8',
-      isActive: isSpinning,
-      onClick: () => {
-        if (isSpinning) {
-          if (this.gizmo3D) this.gizmo3D.stopContinuousRotation();
-          if (this.onToggleModelSpin) this.onToggleModelSpin();
-        } else {
-          const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
-          const model = models[stageIndex];
-          if (this.gizmo3D && model && (!this.gizmo3D.gizmoRoot || !this.gizmo3D.gizmoRoot.visible)) {
-            this.gizmo3D.attach(model);
-          }
-          if (this.gizmo3D) this.gizmo3D.startContinuousRotation('Y');
-          if (this.onStartModelSpin) this.onStartModelSpin();
-        }
-        this.buildWindowContent();
-        this.rebuildActiveButtons();
-      }
-    });
-
     // 3. Section 2: Play Animation + Voiceover + BGM (Stranger Things Soundtrack)
     const isAudioActive = (this.audioPlayingStageIndex === stageIndex);
     this.createSubOptionButton({
       id: 'obj_btn_anim_voice_bgm',
       label: isAudioActive ? '🎬 Animation + Voiceover + BGM: [PLAYING ✔]' : '🎬 Play Animation + Voiceover + BGM',
       colX: -0.22,
-      y: -0.16,
+      y: -0.10,
       width: 1.02,
-      height: 0.12,
+      height: 0.11,
       color: isAudioActive ? '#22c55e' : '#e11d48',
       isActive: isAudioActive,
       onClick: () => {
@@ -1161,9 +1064,6 @@ export class VRRemoteBar {
           const speechText = stage.narration || stage.description;
           this.audioManager.speakNarration(speechText);
         }
-        if (this.onStartModelSpin) {
-          this.onStartModelSpin();
-        }
         this.buildWindowContent();
         this.rebuildActiveButtons();
       }
@@ -1173,9 +1073,9 @@ export class VRRemoteBar {
       id: 'obj_btn_stop_audio',
       label: '⏹ Stop Audio',
       colX: 0.54,
-      y: -0.16,
+      y: -0.10,
       width: 0.42,
-      height: 0.12,
+      height: 0.11,
       color: '#94a3b8',
       isActive: false,
       onClick: () => {

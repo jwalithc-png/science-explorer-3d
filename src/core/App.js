@@ -631,9 +631,10 @@ export class App {
       }
     });
 
-    // 5b. Spin the selected model on its own Y-axis (runs until user stops it)
+    // 5b. Spin the selected model on its own Y-axis (runs continuously, paused while using XYZ gizmo)
+    const isGizmoActive = this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible;
     const spinIdx = this.navigationController.spinningModelIndex;
-    if (spinIdx >= 0 && spinIdx < this.stageModels.length) {
+    if (!isGizmoActive && spinIdx >= 0 && spinIdx < this.stageModels.length) {
       const spinModel = this.stageModels[spinIdx];
       if (spinModel) {
         const grp = spinModel.inspectPivot || spinModel.group || (spinModel.isObject3D ? spinModel : null);
