@@ -151,7 +151,12 @@ export class App {
       getIsTourPlaying: () => this.tourController.isPlaying,
       getIsModelSpinning: () => this.navigationController.spinningModelIndex >= 0,
       getIsPaused: () => (this.simParams.simSpeed === 0),
-      getActiveModule: () => this.activeModule
+      getActiveModule: () => this.activeModule,
+      sendRemoteMessage: (msg) => {
+        if (this.remoteRelay) {
+          this.remoteRelay.sendMessage(msg);
+        }
+      }
     });
 
     // 10. Remote Control WebSocket Relay

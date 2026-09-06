@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>🎮 Science Explorer 3D — Dual-Screen WebSocket Remote Controller</title>
+  <title>🎮 Science Explorer 3D — VR Remote Mouse Controller</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 
     :root {
       --primary-cyan: #38bdf8;
-      --primary-rose: #f43f5e;
+      --primary-rose: #ef4444;
       --primary-gold: #facc15;
       --primary-green: #22c55e;
       --bg-dark: #020617;
@@ -20,7 +20,6 @@
       --panel-border: rgba(255, 255, 255, 0.16);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --mod-color: #38bdf8;
     }
 
     body {
@@ -33,15 +32,15 @@
       overflow-y: auto;
       overflow-x: hidden;
       user-select: none;
-      padding: 16px 24px;
+      padding: 16px 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     /* Top Status Bar */
     #status-bar {
-      padding: 12px 24px;
+      padding: 10px 20px;
       background: var(--panel-bg);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -53,7 +52,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
     #status-bar.connected { border-color: #22c55e; color: #4ade80; }
     #status-bar.disconnected { border-color: #ef4444; color: #f87171; }
@@ -84,203 +83,146 @@
       box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
     }
 
-    /* VR Mouse Mode Live Banner */
-    .vr-mouse-banner {
-      background: linear-gradient(90deg, rgba(56, 189, 248, 0.18), rgba(34, 197, 94, 0.18));
-      border: 1.5px solid rgba(56, 189, 248, 0.4);
+    /* Interactive VR Window State Banner */
+    #vr-state-banner {
+      background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(56, 189, 248, 0.15));
+      border: 1.5px solid rgba(239, 68, 68, 0.4);
       border-radius: 14px;
       padding: 10px 18px;
       font-size: 13px;
       font-weight: 600;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 10px;
-      color: #e2e8f0;
+      color: #f1f5f9;
       box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      transition: all 0.3s;
     }
+    #vr-state-banner.window-open {
+      background: linear-gradient(90deg, rgba(34, 197, 94, 0.2), rgba(56, 189, 248, 0.2));
+      border-color: #22c55e;
+      color: #86efac;
+    }
+
+    .banner-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .pulse-dot {
       width: 10px;
       height: 10px;
-      background: #22c55e;
+      background: #ef4444;
       border-radius: 50%;
-      box-shadow: 0 0 12px #22c55e;
+      box-shadow: 0 0 12px #ef4444;
       animation: pulseAnim 1.4s infinite;
       flex-shrink: 0;
     }
+    #vr-state-banner.window-open .pulse-dot {
+      background: #22c55e;
+      box-shadow: 0 0 12px #22c55e;
+    }
+
     @keyframes pulseAnim {
       0% { transform: scale(0.9); opacity: 0.7; }
       50% { transform: scale(1.3); opacity: 1; }
       100% { transform: scale(0.9); opacity: 0.7; }
     }
 
-    /* Module Switcher Tabs */
-    .module-tabs {
-      display: flex;
-      gap: 10px;
-    }
-    .mod-btn {
-      flex: 1;
-      padding: 14px 12px;
-      border-radius: 16px;
-      background: rgba(30, 41, 59, 0.7);
-      border: 1px solid var(--panel-border);
-      color: var(--text-muted);
-      font-size: 14px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer;
-    }
-    .mod-btn.active {
-      background: rgba(56, 189, 248, 0.25);
-      border-color: var(--mod-color);
-      color: #ffffff;
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
-      transform: translateY(-1px);
-    }
-
-    /* Quick Action Buttons Row */
-    .quick-actions-bar {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 8px;
-    }
-    @media (max-width: 800px) {
-      .quick-actions-bar {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-    .btn-qa {
-      background: rgba(30, 41, 59, 0.85);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
-      padding: 10px 8px;
-      color: var(--text-main);
-      font-size: 12px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-qa:hover, .btn-qa:active {
-      background: #38bdf8;
-      color: #020617;
-      border-color: #38bdf8;
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
-    }
-    .btn-qa.active {
-      background: #22c55e;
-      color: #020617;
-      border-color: #22c55e;
-      box-shadow: 0 0 16px rgba(34, 197, 94, 0.6);
-    }
-
-    /* GIANT Touch & Mouse Trackpad with In-VR 4-Column Mapping */
+    /* PURE, CLEAN, EMPTY FREE SPACE MOUSE TRACKPAD */
     #trackpad {
-      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.95), rgba(5, 11, 24, 0.98));
-      border: 2px solid rgba(56, 189, 248, 0.4);
-      border-radius: 22px;
-      min-height: 380px;
+      background: radial-gradient(circle at 50% 12%, rgba(30, 41, 59, 0.8), rgba(5, 11, 24, 0.98) 75%);
+      border: 2px solid rgba(56, 189, 248, 0.35);
+      border-radius: 24px;
+      height: calc(100vh - 200px);
+      min-height: 480px;
       position: relative;
       cursor: crosshair;
       overflow: hidden;
-      box-shadow: inset 0 0 60px rgba(0,0,0,0.8), 0 8px 32px rgba(0,0,0,0.5);
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.8), 0 8px 32px rgba(0,0,0,0.6);
       transition: border-color 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 24px;
     }
     #trackpad:hover {
-      border-color: rgba(56, 189, 248, 0.7);
+      border-color: rgba(56, 189, 248, 0.65);
     }
     #trackpad.active {
       border-color: #38bdf8;
-      box-shadow: inset 0 0 60px rgba(56, 189, 248, 0.2), 0 0 30px rgba(56, 189, 248, 0.35);
+      box-shadow: inset 0 0 70px rgba(56, 189, 248, 0.25), 0 0 30px rgba(56, 189, 248, 0.35);
     }
 
-    /* 4-Column VR HUD Overlay inside Trackpad */
-    .trackpad-vr-grid {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      right: 12px;
-      bottom: 12px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      pointer-events: none;
-      z-index: 2;
-    }
-    .tp-vr-col {
-      border: 1px solid rgba(56, 189, 248, 0.18);
+    /* Small Red Box Indicator at Top of Trackpad */
+    #red-box-indicator {
+      background: rgba(220, 38, 38, 0.92);
+      border: 2px solid #ffffff;
       border-radius: 14px;
-      background: rgba(15, 23, 42, 0.50);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      padding: 10px 24px;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: 0.8px;
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+      pointer-events: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #red-box-indicator.hovered {
+      background: rgba(239, 68, 68, 1);
+      box-shadow: 0 0 35px rgba(239, 68, 68, 0.95), 0 0 15px #ffffff;
+      transform: scale(1.08);
+    }
+
+    /* Center Hint in Free Space */
+    .free-space-watermark {
+      position: absolute;
+      top: 52%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
-      padding: 10px 8px;
-      gap: 6px;
-      transition: all 0.2s;
+      align-items: center;
+      gap: 12px;
+      pointer-events: none;
+      opacity: 0.45;
+      text-align: center;
+      transition: opacity 0.3s;
     }
-    .tp-vr-col.hovered {
-      border-color: #38bdf8;
-      background: rgba(56, 189, 248, 0.12);
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+    #trackpad:hover .free-space-watermark {
+      opacity: 0.25;
     }
-    .tp-vr-col-header {
-      font-size: 11px;
+    .watermark-icon {
+      font-size: 52px;
+      filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.6));
+    }
+    .watermark-title {
+      font-size: 16px;
       font-weight: 800;
       color: #38bdf8;
-      letter-spacing: 0.6px;
+      letter-spacing: 1px;
       text-transform: uppercase;
-      text-align: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      padding-bottom: 4px;
     }
-    .tp-vr-item-list {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      flex: 1;
-      justify-content: center;
-    }
-    .tp-vr-item {
-      font-size: 11px;
-      font-weight: 700;
-      color: #cbd5e1;
-      background: rgba(30, 41, 59, 0.65);
-      padding: 6px 6px;
-      border-radius: 8px;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      transition: all 0.15s;
-    }
-    .tp-vr-item.active {
-      border-color: #22c55e;
-      color: #86efac;
-      background: rgba(34, 197, 94, 0.25);
-    }
-    .tp-vr-item.hovered {
-      border-color: #ffffff;
-      color: #ffffff;
-      background: rgba(56, 189, 248, 0.45);
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
-      transform: scale(1.03);
+    .watermark-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      font-family: 'JetBrains Mono', monospace;
+      max-width: 420px;
+      line-height: 1.5;
     }
 
-    /* Real-Time Trackpad Mouse Pointer Ring */
+    /* Real-Time Mouse Pointer Ring */
     #trackpad-mouse-cursor {
       position: absolute;
-      width: 34px;
-      height: 34px;
-      border: 2px solid #ffffff;
+      width: 32px;
+      height: 32px;
+      border: 2.5px solid #ffffff;
       border-radius: 50%;
       background: rgba(56, 189, 248, 0.45);
       box-shadow: 0 0 18px #38bdf8, inset 0 0 8px #ffffff;
@@ -288,7 +230,6 @@
       transform: translate(-50%, -50%);
       z-index: 10;
       display: none;
-      transition: width 0.1s, height 0.1s;
     }
     #trackpad-mouse-cursor.visible {
       display: block;
@@ -303,71 +244,43 @@
       background: #ffffff;
       border-radius: 50%;
       transform: translate(-50%, -50%);
-      box-shadow: 0 0 6px #ffffff;
+      box-shadow: 0 0 8px #ffffff;
     }
     #trackpad-mouse-cursor.clicking {
       transform: translate(-50%, -50%) scale(0.85);
-      background: rgba(34, 197, 94, 0.7);
+      background: rgba(34, 197, 94, 0.75);
       border-color: #86efac;
       box-shadow: 0 0 24px #22c55e;
     }
 
-    /* Full-Width Stage Teleport Grid Section */
-    .stages-section {
-      background: var(--panel-bg);
-      border: 1px solid var(--panel-border);
-      border-radius: 20px;
-      padding: 18px;
+    /* Clean Bottom Utility Bar */
+    .bottom-utility-bar {
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-    }
-    .stages-title {
-      font-size: 12px;
-      font-weight: 800;
-      color: #38bdf8;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-    }
-    .stages-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
       gap: 10px;
+      justify-content: space-between;
+      align-items: center;
     }
-    @media (max-width: 1050px) {
-      .stages-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-    @media (max-width: 600px) {
-      .stages-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    .btn-stage {
-      background: rgba(30, 41, 59, 0.7);
+    .btn-util {
+      flex: 1;
+      padding: 10px 14px;
+      background: rgba(30, 41, 59, 0.8);
       border: 1px solid var(--panel-border);
       border-radius: 12px;
-      padding: 14px 14px;
       color: var(--text-main);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 700;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
-      text-align: left;
-      cursor: pointer;
-      transition: all 0.15s;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
     }
-    .btn-stage:active {
-      transform: scale(0.97);
-    }
-    .btn-stage.active {
-      background: rgba(56, 189, 248, 0.25);
+    .btn-util:hover, .btn-util:active {
+      background: #38bdf8;
+      color: #020617;
       border-color: #38bdf8;
-      color: #38bdf8;
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
     }
 
     /* Toast */
@@ -400,128 +313,52 @@
     <span id="status-text">Connecting to 3D simulation...</span>
     <div class="status-right-group">
       <span id="ping-indicator">🔴 Offline</span>
-      <button class="btn-fs" id="btnFullscreen" title="Toggle Fullscreen Screen">⛶ Fullscreen</button>
+      <button class="btn-fs" id="btnFullscreen" title="Toggle Fullscreen">⛶ Fullscreen</button>
     </div>
   </div>
 
-  <!-- Live VR Mouse Mode Banner -->
-  <div class="vr-mouse-banner">
-    <span class="pulse-dot"></span>
-    <span><strong>PC MOUSE CONTROLLER ACTIVE:</strong> Move your mouse inside the Trackpad below to steer the circle pointer in Mobile VR. Click to trigger any option (flies to planet, toggles tour, switches module)!</span>
+  <!-- Interactive VR Window State Banner -->
+  <div id="vr-state-banner">
+    <div class="banner-left">
+      <span class="pulse-dot"></span>
+      <span id="banner-text"><strong>VR FREE-SPACE MOUSE CONTROLLER:</strong> Move mouse to top Red Box [🔴 MENU] & click to open menu window in Mobile VR.</span>
+    </div>
+    <span id="window-status-pill" style="font-size: 12px; font-weight: 800; color: #cbd5e1;">[WINDOW CLOSED]</span>
   </div>
 
-  <!-- Module Selector Tabs -->
-  <div class="module-tabs">
-    <button class="mod-btn active" data-module="solar">☀️ Solar System</button>
-    <button class="mod-btn" data-module="photosynthesis">🌿 Plant Biology</button>
-    <button class="mod-btn" data-module="reproduction">👶 Human Reproduction</button>
-  </div>
-
-  <!-- Quick Action Buttons Row -->
-  <div class="quick-actions-bar">
-    <button class="btn-qa" id="qaTour">🎬 Stranger Things Tour</button>
-    <button class="btn-qa" id="qaSpin">🔄 Spin Model 360°</button>
-    <button class="btn-qa" id="qaPause">⏸ Pause / Resume</button>
-    <button class="btn-qa" id="qaRecenter">🎯 Recenter VR (H)</button>
-    <button class="btn-qa" id="qaFlip">🔄 Flip VR 180° (I)</button>
-    <button class="btn-qa" id="qaVRBar">👁️ VR Menu Bar (V)</button>
-  </div>
-
-  <!-- Giant Touch & Mouse Trackpad with 4-Column In-VR Mapping -->
+  <!-- GIANT FREE SPACE MOUSE TRACKPAD (EMPTY & CLEAN) -->
   <div id="trackpad">
+    <!-- Top Red Box Indicator (Visual guide where the VR Red Box sits) -->
+    <div id="red-box-indicator">
+      <span>🔴 3D MENU</span>
+    </div>
+
+    <!-- Center Watermark -->
+    <div class="free-space-watermark">
+      <div class="watermark-icon">🖱️</div>
+      <div class="watermark-title">Free Space Mouse Trackpad</div>
+      <div class="watermark-sub">Move mouse freely inside this box to control the circle pointer in VR.<br>Click the top Red Box to open the 3 Options Window. Pick an option and click [✕] to close &amp; fly!</div>
+    </div>
+
     <!-- Real-time cursor follower -->
     <div id="trackpad-mouse-cursor"></div>
-
-    <!-- 4-Column VR HUD Overlay Guide -->
-    <div class="trackpad-vr-grid" id="trackpadVRGrid">
-      <!-- Col 1: Modules -->
-      <div class="tp-vr-col" id="col0">
-        <div class="tp-vr-col-header">1. MODULES</div>
-        <div class="tp-vr-item-list">
-          <div class="tp-vr-item active" id="tp-mod-solar">☀️ Solar System</div>
-          <div class="tp-vr-item" id="tp-mod-photosynthesis">🌿 Plant Biology</div>
-          <div class="tp-vr-item" id="tp-mod-reproduction">👶 Reproduction</div>
-        </div>
-      </div>
-      <!-- Col 2: Controls -->
-      <div class="tp-vr-col" id="col1">
-        <div class="tp-vr-col-header">2. CONTROLS</div>
-        <div class="tp-vr-item-list">
-          <div class="tp-vr-item" id="tp-btn-tour">🎬 Tour: [OFF]</div>
-          <div class="tp-vr-item" id="tp-btn-spin">🔄 Spin: [OFF]</div>
-          <div class="tp-vr-item" id="tp-btn-pause">⏸ Pause</div>
-          <div class="tp-vr-item" id="tp-btn-recenter">🎯 Recenter (H)</div>
-        </div>
-      </div>
-      <!-- Col 3: Stages 1-5 -->
-      <div class="tp-vr-col" id="col2">
-        <div class="tp-vr-col-header" id="col3Title">3. INNER BODIES</div>
-        <div class="tp-vr-item-list" id="col3Items">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-      <!-- Col 4: Stages 6-10 -->
-      <div class="tp-vr-col" id="col3">
-        <div class="tp-vr-col-header" id="col4Title">4. OUTER BODIES</div>
-        <div class="tp-vr-item-list" id="col4Items">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-    </div>
   </div>
 
-  <!-- Full-Width Stage Teleport Grid Section -->
-  <div class="stages-section">
-    <div class="stages-title">📍 Jump & Track Stage / Celestial Body</div>
-    <div class="stages-grid" id="stagesContainer">
-      <!-- Dynamically populated per module -->
-    </div>
+  <!-- Clean Bottom Utility Controls -->
+  <div class="bottom-utility-bar">
+    <button class="btn-util" id="btnTour">🎬 Stranger Things Tour</button>
+    <button class="btn-util" id="btnSpin">🔄 Spin Model 360°</button>
+    <button class="btn-util" id="btnPause">⏸ Pause / Resume</button>
+    <button class="btn-util" id="btnRecenter">🎯 Recenter VR (H)</button>
+    <button class="btn-util" id="btnFlip">🔄 Flip VR 180° (I)</button>
   </div>
 
   <script>
-    const STAGES_DATA = {
-      solar: [
-        { name: '1. Sun', icon: '☀️' },
-        { name: '2. Mercury', icon: '☿' },
-        { name: '3. Venus', icon: '♀' },
-        { name: '4. Earth & Moon', icon: '⊕' },
-        { name: '5. Mars', icon: '♂' },
-        { name: '6. Jupiter', icon: '♃' },
-        { name: '7. Saturn', icon: '♄' },
-        { name: '8. Uranus', icon: '♅' },
-        { name: '9. Neptune', icon: '♆' },
-        { name: '10. Pluto', icon: '♇' }
-      ],
-      photosynthesis: [
-        { name: '1. Sun Photon Transit', icon: '☀️' },
-        { name: '2. Canopy Catchment', icon: '🌳' },
-        { name: '3. Plant Growth', icon: '🌱' },
-        { name: '4. Leaf Anatomy', icon: '🍃' },
-        { name: '5. Chloroplast Cell', icon: '🔬' },
-        { name: '6. Photosystem II', icon: '⚡' },
-        { name: '7. Electron Chain', icon: '🧪' },
-        { name: '8. ATP Synthase', icon: '⚙️' },
-        { name: '9. Calvin Cycle', icon: '🔄' }
-      ],
-      reproduction: [
-        { name: '1. Sperm Journey', icon: '🏊' },
-        { name: '2. The Oocyte', icon: '🥚' },
-        { name: '3. Acrosome Fusion', icon: '🔬' },
-        { name: '4. Calcium Spark', icon: '⚡' },
-        { name: '5. Blastocyst', icon: '🧬' },
-        { name: '6. Implantation', icon: '🌱' },
-        { name: '7. Organogenesis', icon: '❤️' },
-        { name: '8. Fetal Development', icon: '👶' },
-        { name: '9. Full-Term Miracle', icon: '🍼' }
-      ]
-    };
-
-    let activeModule = 'solar';
-    let currentStageIndex = 0;
     let ws = null;
-    let isPaused = false;
+    let isWindowOpen = false;
     let isTouring = false;
     let isSpinning = false;
+    let isPaused = false;
 
     const statusBar = document.getElementById('status-bar');
     const statusText = document.getElementById('status-text');
@@ -529,13 +366,11 @@
     const toast = document.getElementById('toast');
     const trackpad = document.getElementById('trackpad');
     const trackpadMouseCursor = document.getElementById('trackpad-mouse-cursor');
-    const stagesContainer = document.getElementById('stagesContainer');
+    const redBoxIndicator = document.getElementById('red-box-indicator');
+    const vrStateBanner = document.getElementById('vr-state-banner');
+    const bannerText = document.getElementById('banner-text');
+    const windowStatusPill = document.getElementById('window-status-pill');
     const btnFullscreen = document.getElementById('btnFullscreen');
-
-    const col3Title = document.getElementById('col3Title');
-    const col4Title = document.getElementById('col4Title');
-    const col3Items = document.getElementById('col3Items');
-    const col4Items = document.getElementById('col4Items');
 
     function showToast(msg) {
       toast.textContent = msg;
@@ -559,74 +394,6 @@
       });
     }
 
-    function updateTrackpadColumns() {
-      const list = STAGES_DATA[activeModule] || STAGES_DATA.solar;
-      col3Title.textContent = activeModule === 'solar' ? '3. INNER BODIES' : '3. FIRST STAGES';
-      col4Title.textContent = activeModule === 'solar' ? '4. OUTER BODIES' : '4. LATER STAGES';
-
-      const first5 = list.slice(0, 5);
-      col3Items.innerHTML = first5.map((st, i) => `
-        <div class="tp-vr-item ${currentStageIndex === i ? 'active' : ''}" id="tp-stage-${i}">
-          ${st.icon} ${st.name.replace(/^\d+\.\s*/, '')}
-        </div>
-      `).join('');
-
-      const next5 = list.slice(5, 10);
-      col4Items.innerHTML = next5.map((st, i) => {
-        const actualIdx = 5 + i;
-        return `
-          <div class="tp-vr-item ${currentStageIndex === actualIdx ? 'active' : ''}" id="tp-stage-${actualIdx}">
-            ${st.icon} ${st.name.replace(/^\d+\.\s*/, '')}
-          </div>
-        `;
-      }).join('');
-
-      // Update module items
-      ['solar', 'photosynthesis', 'reproduction'].forEach(m => {
-        const el = document.getElementById(`tp-mod-${m}`);
-        if (el) {
-          if (m === activeModule) el.classList.add('active');
-          else el.classList.remove('active');
-        }
-      });
-    }
-
-    function renderStages() {
-      const list = STAGES_DATA[activeModule] || STAGES_DATA.solar;
-      stagesContainer.innerHTML = list.map((st, idx) => `
-        <button class="btn-stage ${idx === currentStageIndex ? 'active' : ''}" data-stage="${idx}">
-          <span>${st.icon}</span>
-          <span>${st.name}</span>
-        </button>
-      `).join('');
-
-      stagesContainer.querySelectorAll('.btn-stage').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const idx = parseInt(btn.getAttribute('data-stage'), 10);
-          currentStageIndex = idx;
-          renderStages();
-          updateTrackpadColumns();
-          send({ type: 'teleport', stageIndex: idx });
-
-          // Calculate normalized X and Y in VR remote bar for this stage so VR cursor also moves there
-          let normX, normY;
-          if (idx < 5) {
-            normX = 0.26 / 2.14 + 0.5; // ~0.62
-            const btnY = 0.17 - idx * 0.095;
-            normY = 0.5 - (btnY / 0.62);
-          } else {
-            normX = 0.78 / 2.14 + 0.5; // ~0.86
-            const btnY = 0.17 - (idx - 5) * 0.095;
-            normY = 0.5 - (btnY / 0.62);
-          }
-          send({ type: 'remoteMouseMove', x: normX, y: normY });
-          showToast(`Tracking ${list[idx].name}`);
-        });
-      });
-
-      updateTrackpadColumns();
-    }
-
     // Connect WebSocket Relay Bridge
     function connectWS() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -636,7 +403,7 @@
 
       ws.onopen = () => {
         statusBar.className = 'connected';
-        statusText.textContent = '🟢 Connected to 3D Simulation';
+        statusText.textContent = '🟢 Connected to 3D VR Simulation';
         pingIndicator.textContent = 'Live';
         send({ role: 'controller' });
       };
@@ -651,12 +418,30 @@
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data);
-          if (msg.type === 'stageChanged') {
-            currentStageIndex = msg.stageIndex;
-            renderStages();
+          if (msg.type === 'menuWindowState') {
+            isWindowOpen = msg.isOpen;
+            updateWindowStateUI(isWindowOpen);
+          } else if (msg.type === 'stageChanged') {
+            showToast(`Tracking: ${msg.stage ? msg.stage.name : 'Stage ' + msg.stageIndex}`);
           }
         } catch(err) {}
       };
+    }
+
+    function updateWindowStateUI(open) {
+      if (open) {
+        vrStateBanner.classList.add('window-open');
+        bannerText.innerHTML = '<strong>VR MENU WINDOW IS OPEN:</strong> Pick one of the 3 options, choose sub-options, and click <strong>[✕ CLOSE]</strong> to execute!';
+        windowStatusPill.textContent = '[WINDOW OPEN]';
+        windowStatusPill.style.color = '#86efac';
+        redBoxIndicator.style.opacity = '0.3';
+      } else {
+        vrStateBanner.classList.remove('window-open');
+        bannerText.innerHTML = '<strong>VR CLEAN VIEW:</strong> Move mouse to top Red Box [🔴 MENU] & click to open menu in Mobile VR.';
+        windowStatusPill.textContent = '[WINDOW CLOSED]';
+        windowStatusPill.style.color = '#cbd5e1';
+        redBoxIndicator.style.opacity = '1.0';
+      }
     }
 
     function send(obj) {
@@ -665,115 +450,21 @@
       }
     }
 
-    // Module Switcher Tabs
-    document.querySelectorAll('.mod-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeModule = btn.getAttribute('data-module');
-        currentStageIndex = 0;
-        renderStages();
-        send({ type: 'switchModule', moduleId: activeModule });
-        showToast(`Switched to ${activeModule.toUpperCase()}`);
-      });
-    });
-
-    // Quick Actions
-    document.getElementById('qaTour').addEventListener('click', () => {
-      isTouring = !isTouring;
-      send({ type: 'tour' });
-      document.getElementById('qaTour').classList.toggle('active', isTouring);
-      const tpTour = document.getElementById('tp-btn-tour');
-      if (tpTour) tpTour.textContent = isTouring ? '🎬 Tour: [ON]' : '🎬 Tour: [OFF]';
-      showToast(isTouring ? 'Stranger Things Tour Started' : 'Tour Stopped');
-    });
-
-    document.getElementById('qaSpin').addEventListener('click', () => {
-      isSpinning = !isSpinning;
-      send({ type: isSpinning ? 'rotateModel' : 'stopRotateModel' });
-      document.getElementById('qaSpin').classList.toggle('active', isSpinning);
-      const tpSpin = document.getElementById('tp-btn-spin');
-      if (tpSpin) tpSpin.textContent = isSpinning ? '🔄 Spin: [ON]' : '🔄 Spin: [OFF]';
-      showToast(isSpinning ? 'Rotating Model 360°' : 'Stopped Rotation');
-    });
-
-    document.getElementById('qaPause').addEventListener('click', () => {
-      isPaused = !isPaused;
-      send({ type: 'setParam', key: 'simSpeed', value: isPaused ? 0.0 : 1.0 });
-      document.getElementById('qaPause').classList.toggle('active', isPaused);
-      const tpPause = document.getElementById('tp-btn-pause');
-      if (tpPause) tpPause.textContent = isPaused ? '▶ Resume' : '⏸ Pause';
-      showToast(isPaused ? 'Simulation Paused' : 'Simulation Resumed');
-    });
-
-    document.getElementById('qaRecenter').addEventListener('click', () => {
-      send({ type: 'recenterVR' });
-      showToast('Recentered VR Heading (H)');
-    });
-
-    document.getElementById('qaFlip').addEventListener('click', () => {
-      send({ type: 'flipVR' });
-      showToast('Flipped VR 180° (I)');
-    });
-
-    document.getElementById('qaVRBar').addEventListener('click', () => {
-      send({ type: 'toggleVRBar' });
-      showToast('Toggled VR Remote Menu');
-    });
-
     // =========================================================================
-    // TOUCH & MOUSE TRACKPAD DRIVING IN-VR CIRCULAR POINTER IN REAL TIME
+    // TOUCH & MOUSE TRACKPAD — DRIVES CIRCLE POINTER IN VR IN REAL TIME
     // =========================================================================
     let isMouseDown = false;
     let startX = 0, startY = 0;
     let lastX = 0, lastY = 0;
     let dragDist = 0;
 
-    function updateTrackpadOverlayHighlight(nx, ny) {
-      // Clear previous hover classes
-      document.querySelectorAll('.tp-vr-col').forEach(c => c.classList.remove('hovered'));
-      document.querySelectorAll('.tp-vr-item').forEach(i => i.classList.remove('hovered'));
-
-      // Determine active column
-      let colIdx = Math.floor(nx * 4);
-      colIdx = Math.max(0, Math.min(3, colIdx));
-      const colEl = document.getElementById(`col${colIdx}`);
-      if (colEl) colEl.classList.add('hovered');
-
-      // Highlight items within column based on normalized Y
-      if (colIdx === 0) {
-        // 3 modules: Solar, Plant, Repro
-        const idx = Math.floor(ny * 3);
-        const mods = ['solar', 'photosynthesis', 'reproduction'];
-        const el = document.getElementById(`tp-mod-${mods[idx]}`);
-        if (el) el.classList.add('hovered');
-      } else if (colIdx === 1) {
-        // 4 controls: Tour, Spin, Pause, Recenter
-        const idx = Math.floor(ny * 4);
-        const ctrlIds = ['tp-btn-tour', 'tp-btn-spin', 'tp-btn-pause', 'tp-btn-recenter'];
-        const el = document.getElementById(ctrlIds[idx]);
-        if (el) el.classList.add('hovered');
-      } else if (colIdx === 2) {
-        // 5 items in Col 3 (Stages 0-4)
-        const idx = Math.min(4, Math.floor(ny * 5));
-        const el = document.getElementById(`tp-stage-${idx}`);
-        if (el) el.classList.add('hovered');
-      } else if (colIdx === 3) {
-        // 5 items in Col 4 (Stages 5-9)
-        const idx = 5 + Math.min(4, Math.floor(ny * 5));
-        const el = document.getElementById(`tp-stage-${idx}`);
-        if (el) el.classList.add('hovered');
-      }
-    }
-
-    trackpad.addEventListener('pointerenter', (e) => {
+    trackpad.addEventListener('pointerenter', () => {
       trackpadMouseCursor.classList.add('visible');
     });
 
     trackpad.addEventListener('pointerleave', () => {
       trackpadMouseCursor.classList.remove('visible');
-      document.querySelectorAll('.tp-vr-col').forEach(c => c.classList.remove('hovered'));
-      document.querySelectorAll('.tp-vr-item').forEach(i => i.classList.remove('hovered'));
+      redBoxIndicator.classList.remove('hovered');
     });
 
     trackpad.addEventListener('pointermove', (e) => {
@@ -783,18 +474,22 @@
       const nx = Math.max(0, Math.min(1, localX / rect.width));
       const ny = Math.max(0, Math.min(1, localY / rect.height));
 
-      // Move local cursor on trackpad
+      // Move local cursor follower
       trackpadMouseCursor.style.left = localX + 'px';
       trackpadMouseCursor.style.top = localY + 'px';
       trackpadMouseCursor.classList.add('visible');
 
-      // Highlight corresponding element on trackpad overlay
-      updateTrackpadOverlayHighlight(nx, ny);
+      // Check if mouse is hovering over top red box zone
+      if (!isWindowOpen && nx >= 0.38 && nx <= 0.62 && ny <= 0.18) {
+        redBoxIndicator.classList.add('hovered');
+      } else {
+        redBoxIndicator.classList.remove('hovered');
+      }
 
-      // Send continuous real-time normalized coordinates to mobile VR!
+      // Stream continuous normalized coordinates to mobile VR
       send({ type: 'remoteMouseMove', x: nx, y: ny });
 
-      // If pointer is down and dragging
+      // If dragging while mouse down
       if (isMouseDown) {
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
@@ -802,8 +497,8 @@
         lastY = e.clientY;
         dragDist += Math.hypot(dx, dy);
 
-        // If dragged more than 8 pixels, also send orbital drag to simulation
-        if (dragDist > 8) {
+        // If dragged more than 10 pixels and window is closed, rotate camera in 3D world
+        if (!isWindowOpen && dragDist > 10) {
           send({ type: 'drag', dx, dy });
         }
       }
@@ -839,10 +534,10 @@
       const nx = Math.max(0, Math.min(1, localX / rect.width));
       const ny = Math.max(0, Math.min(1, localY / rect.height));
 
-      // If it was a click (not a major drag)
-      if (dragDist <= 8) {
+      // If clicked without major drag
+      if (dragDist <= 10) {
         send({ type: 'remoteMouseClick', x: nx, y: ny });
-        showToast('Activated VR Option');
+        showToast('VR Click Triggered');
       }
     };
 
@@ -855,60 +550,63 @@
       send({ type: 'wheel', dy: e.deltaY });
     }, { passive: false });
 
-    // Keyboard Shortcuts from Remote Controller
+    // Quick Utility Buttons
+    document.getElementById('btnTour').addEventListener('click', () => {
+      isTouring = !isTouring;
+      send({ type: 'tour' });
+      document.getElementById('btnTour').classList.toggle('active', isTouring);
+      showToast(isTouring ? 'Stranger Things Tour Started' : 'Tour Stopped');
+    });
+
+    document.getElementById('btnSpin').addEventListener('click', () => {
+      isSpinning = !isSpinning;
+      send({ type: isSpinning ? 'rotateModel' : 'stopRotateModel' });
+      document.getElementById('btnSpin').classList.toggle('active', isSpinning);
+      showToast(isSpinning ? 'Rotating Model 360°' : 'Stopped Rotation');
+    });
+
+    document.getElementById('btnPause').addEventListener('click', () => {
+      isPaused = !isPaused;
+      send({ type: 'setParam', key: 'simSpeed', value: isPaused ? 0.0 : 1.0 });
+      document.getElementById('btnPause').classList.toggle('active', isPaused);
+      showToast(isPaused ? 'Simulation Paused' : 'Simulation Resumed');
+    });
+
+    document.getElementById('btnRecenter').addEventListener('click', () => {
+      send({ type: 'recenterVR' });
+      showToast('Recentered VR Target (H)');
+    });
+
+    document.getElementById('btnFlip').addEventListener('click', () => {
+      send({ type: 'flipVR' });
+      showToast('Flipped VR 180° (I)');
+    });
+
+    // Global Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      const list = STAGES_DATA[activeModule] || STAGES_DATA.solar;
-      if (e.key >= '1' && e.key <= '9') {
-        const idx = parseInt(e.key, 10) - 1;
-        if (idx < list.length) {
-          currentStageIndex = idx;
-          renderStages();
-          send({ type: 'teleport', stageIndex: idx });
-          showToast(`Tracking ${list[idx].name}`);
-        }
-      } else if (e.key === '0' && list.length >= 10) {
-        currentStageIndex = 9;
-        renderStages();
-        send({ type: 'teleport', stageIndex: 9 });
-        showToast(`Tracking ${list[9].name}`);
-      } else if (e.code === 'ArrowUp') {
-        send({ type: 'pan', dx: 0, dy: 8 });
-      } else if (e.code === 'ArrowDown') {
-        send({ type: 'pan', dx: 0, dy: -8 });
-      } else if (e.code === 'ArrowLeft') {
-        send({ type: 'pan', dx: -8, dy: 0 });
-      } else if (e.code === 'ArrowRight') {
-        send({ type: 'pan', dx: 8, dy: 0 });
-      } else if (e.key.toLowerCase() === 'z') {
-        send({ type: 'wheel', dy: -80 });
-      } else if (e.key.toLowerCase() === 'x') {
-        send({ type: 'wheel', dy: 80 });
-      } else if (e.key.toLowerCase() === 'r') {
-        isSpinning = true;
-        send({ type: 'rotateModel' });
-        showToast('Rotating Model');
-      } else if (e.key.toLowerCase() === 'c') {
-        isSpinning = false;
-        send({ type: 'stopRotateModel' });
-        showToast('Stopped Rotation');
-      } else if (e.key.toLowerCase() === 'a') {
+      if (e.key.toLowerCase() === 'a') {
         isTouring = !isTouring;
         send({ type: 'tour' });
         showToast('Toggled Cinematic Tour');
-      } else if (e.key.toLowerCase() === 'i') {
-        send({ type: 'flipVR' });
-        showToast('Flipped VR 180°');
+      } else if (e.key.toLowerCase() === 'r') {
+        send({ type: 'rotateModel' });
+        showToast('Rotating Model');
+      } else if (e.key.toLowerCase() === 'c') {
+        send({ type: 'stopRotateModel' });
+        showToast('Stopped Rotation');
       } else if (e.key.toLowerCase() === 'h') {
         send({ type: 'recenterVR' });
         showToast('Recentered VR Target');
+      } else if (e.key.toLowerCase() === 'i') {
+        send({ type: 'flipVR' });
+        showToast('Flipped VR 180°');
       } else if (e.key.toLowerCase() === 'v') {
         send({ type: 'toggleVRBar' });
-        showToast('Toggled VR Remote Menu');
+        showToast('Toggled VR Menu');
       }
     });
 
     // Initialize
-    renderStages();
     connectWS();
   </script>
 </body>
