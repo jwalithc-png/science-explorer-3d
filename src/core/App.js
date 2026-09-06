@@ -123,6 +123,8 @@ export class App {
         this.selectStage(idx);
       },
       onToggleTour: () => {
+        this.audioManager.init();
+        this.audioManager.resume();
         const isPlaying = this.tourController.toggleTour();
         this.hud.setTourState(isPlaying);
         return isPlaying;
@@ -393,7 +395,15 @@ export class App {
   initRemoteRelay() {
     this.remoteRelay = new RemoteRelayClient({
       onMessage: (msg) => {
-        if (msg.type === 'drag' || msg.type === 'pan' || msg.type === 'wheel' || msg.type === 'cameraSide' || msg.type === 'rotateModel' || msg.type === 'stopRotateModel') {
+        if (msg.type === 'remoteMouseMove') {
+          if (this.vrRemoteBar) {
+            this.vrRemoteBar.onRemoteMouseMove(msg.x, msg.y);
+          }
+        } else if (msg.type === 'remoteMouseClick') {
+          if (this.vrRemoteBar) {
+            this.vrRemoteBar.onRemoteMouseClick(msg.x, msg.y);
+          }
+        } else if (msg.type === 'drag' || msg.type === 'pan' || msg.type === 'wheel' || msg.type === 'cameraSide' || msg.type === 'rotateModel' || msg.type === 'stopRotateModel') {
           this.navigationController.applyRemoteInput(msg);
         } else if (msg.type === 'teleport') {
           this.tourController.stopTour();
@@ -417,6 +427,10 @@ export class App {
           this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
         } else if (msg.type === 'switchModule') {
           this.hud.switchModule(msg.moduleId);
+        } else if (msg.type === 'toggleVRBar') {
+          if (this.vrRemoteBar) {
+            this.vrRemoteBar.setVisible(!this.vrRemoteBar.panelGroup.visible);
+          }
         }
       }
     });

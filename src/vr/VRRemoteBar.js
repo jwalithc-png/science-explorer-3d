@@ -1,17 +1,19 @@
 import * as THREE from 'three';
 
 /**
- * 4-Column In-VR Spatial Remote Controller with Head-Controlled Circle Mouse Pointer
+ * 4-Column In-VR Spatial Remote Controller with PC Mouse-Controlled Circle Pointer
  * 
  * Features:
  * 1. Fixed at top of user's field of view in VR mode (always accessible by glancing up)
- * 2. Head-controlled circular gaze mouse pointer with visual dwell timer progress ring
+ * 2. Circle mouse pointer driven exclusively by PC remote controller (controller.html) mouse movement!
+ *    (Head tracking does NOT move the mouse pointer)
  * 3. 4-Column Layout:
  *    - Col 1: 🌌 Module Switcher (Solar System, Plant Biology, Human Conception)
  *    - Col 2: 🎬 Animation & Simulation Controls (Tour ON/OFF, Model Spin ON/OFF, Pause/Resume, Recenter VR)
  *    - Col 3: 🪐 Target List Part 1 (Stages 1 - 5, e.g. Sun, Mercury, Venus, Earth, Mars)
  *    - Col 4: 🪐 Target List Part 2 (Stages 6 - 10, e.g. Jupiter, Saturn, Uranus, Neptune, Pluto)
  * 4. Selecting any body/stage smoothly flies the camera towards that 3D model with inspection view!
+ * 5. Instant remote click & optional dwell selection progress ring.
  */
 export class VRRemoteBar {
   constructor({
@@ -56,8 +58,9 @@ export class VRRemoteBar {
     this.requiredDwell = 0.95; // 0.95s dwell duration
     this.actionCooldown = 0;
 
-    this.raycaster = new THREE.Raycaster();
-    this.raycaster.far = 10;
+    // Target coordinates on the panel [-1.07 to +1.07] for X, [-0.31 to +0.31] for Y
+    this.targetCursorX = 0;
+    this.targetCursorY = 0;
 
     // Create Main Panel Container
     this.panelGroup = new THREE.Group();
@@ -70,25 +73,30 @@ export class VRRemoteBar {
 
     this.camera.add(this.panelGroup);
 
-    // Create Circular Gaze Mouse Pointer
-    this.createGazeReticle();
+    // Group for menu items (cleared and rebuilt on module change)
+    this.menuItemsGroup = new THREE.Group();
+    this.menuItemsGroup.name = 'VR_Remote_Bar_MenuItems';
+    this.panelGroup.add(this.menuItemsGroup);
+
+    // Create Circular Remote Mouse Pointer (permanent child of panelGroup)
+    this.createRemoteMouseReticle();
 
     // Build the 4 Columns
     this.build4Columns();
 
-    // Physical tap / click listener for instant activation
+    // Physical tap / click listener on mobile screen
     this.initInputListeners();
 
     this.setVisible(true);
   }
 
-  createGazeReticle() {
+  createRemoteMouseReticle() {
     this.reticleGroup = new THREE.Group();
-    this.reticleGroup.name = 'VR_Gaze_Circle_MousePointer';
-    this.reticleGroup.position.set(0, 0, -1.8); // 1.8m in front of camera
+    this.reticleGroup.name = 'VR_Remote_Circle_MousePointer';
+    this.reticleGroup.position.set(0, 0, 0.04);
 
     // 1. Center pointer dot
-    const dotGeo = new THREE.RingGeometry(0, 0.008, 16);
+    const dotGeo = new THREE.RingGeometry(0, 0.009, 20);
     const dotMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       side: THREE.DoubleSide,
@@ -100,21 +108,21 @@ export class VRRemoteBar {
     this.centerDot.renderOrder = 9999;
     this.reticleGroup.add(this.centerDot);
 
-    // 2. Outer circle pointer ring
-    const ringGeo = new THREE.RingGeometry(0.018, 0.024, 32);
+    // 2. Outer circle pointer ring (cyan glow)
+    const ringGeo = new THREE.RingGeometry(0.022, 0.030, 32);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       side: THREE.DoubleSide,
       depthTest: false,
       transparent: true,
-      opacity: 0.85
+      opacity: 0.92
     });
     this.targetRing = new THREE.Mesh(ringGeo, ringMat);
     this.targetRing.renderOrder = 9999;
     this.reticleGroup.add(this.targetRing);
 
-    // 3. Dynamic Progress Dwell Ring
-    this.dwellGeo = new THREE.RingGeometry(0.026, 0.034, 32, 1, 0, 0.001);
+    // 3. Dynamic Progress Dwell Ring (green glow)
+    this.dwellGeo = new THREE.RingGeometry(0.032, 0.042, 32, 1, 0, 0.001);
     this.dwellMat = new THREE.MeshBasicMaterial({
       color: 0x22c55e,
       side: THREE.DoubleSide,
@@ -128,7 +136,8 @@ export class VRRemoteBar {
     this.dwellMesh.visible = false;
     this.reticleGroup.add(this.dwellMesh);
 
-    this.camera.add(this.reticleGroup);
+    // Add reticle directly to panelGroup so it stays on the surface of the menu
+    this.panelGroup.add(this.reticleGroup);
   }
 
   updateDwellProgress(progress) {
@@ -140,14 +149,14 @@ export class VRRemoteBar {
     this.dwellMesh.visible = true;
     const arc = Math.max(0.001, Math.min(progress * Math.PI * 2, Math.PI * 2));
     this.dwellMesh.geometry.dispose();
-    this.dwellMesh.geometry = new THREE.RingGeometry(0.026, 0.034, 32, 1, 0, arc);
+    this.dwellMesh.geometry = new THREE.RingGeometry(0.032, 0.042, 32, 1, 0, arc);
   }
 
   build4Columns() {
-    // Clear any previous meshes
-    while (this.panelGroup.children.length > 0) {
-      const child = this.panelGroup.children[0];
-      this.panelGroup.remove(child);
+    // Clear previous menu items
+    while (this.menuItemsGroup.children.length > 0) {
+      const child = this.menuItemsGroup.children[0];
+      this.menuItemsGroup.remove(child);
       if (child.geometry) child.geometry.dispose();
       if (child.material) {
         if (child.material.map) child.material.map.dispose();
@@ -156,20 +165,23 @@ export class VRRemoteBar {
     }
     this.buttons = [];
     this.buttonMeshes = [];
+    this.hoveredButton = null;
+    this.dwellTime = 0;
+    this.updateDwellProgress(0);
 
-    // Overall Backdrop Plane
+    // Overall Backdrop Plane (2.14m width x 0.62m height)
     const bgGeo = new THREE.PlaneGeometry(2.14, 0.62);
     const bgMat = new THREE.MeshBasicMaterial({
       color: 0x050b18,
       transparent: true,
-      opacity: 0.88,
+      opacity: 0.90,
       side: THREE.DoubleSide,
       depthTest: false
     });
     const bgMesh = new THREE.Mesh(bgGeo, bgMat);
     bgMesh.position.set(0, 0, -0.01);
     bgMesh.renderOrder = 900;
-    this.panelGroup.add(bgMesh);
+    this.menuItemsGroup.add(bgMesh);
 
     // Decorative top neon border
     const borderGeo = new THREE.PlaneGeometry(2.14, 0.012);
@@ -177,7 +189,7 @@ export class VRRemoteBar {
     const borderMesh = new THREE.Mesh(borderGeo, borderMat);
     borderMesh.position.set(0, 0.305, 0);
     borderMesh.renderOrder = 901;
-    this.panelGroup.add(borderMesh);
+    this.menuItemsGroup.add(borderMesh);
 
     // 4 Column X positions
     const colXs = [-0.78, -0.26, 0.26, 0.78];
@@ -345,7 +357,7 @@ export class VRRemoteBar {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(colX, y, 0.005);
     mesh.renderOrder = 950;
-    this.panelGroup.add(mesh);
+    this.menuItemsGroup.add(mesh);
   }
 
   createButton({ id, label, colX, y, width = 0.44, height = 0.082, isActive = false, colorTheme = '#38bdf8', onClick }) {
@@ -372,7 +384,7 @@ export class VRRemoteBar {
     mesh.renderOrder = 980;
     mesh.userData = { id, isVRButton: true };
 
-    this.panelGroup.add(mesh);
+    this.menuItemsGroup.add(mesh);
 
     const btnObj = {
       id,
@@ -383,6 +395,10 @@ export class VRRemoteBar {
       texture,
       isActive,
       colorTheme,
+      colX,
+      y,
+      width,
+      height,
       onClick
     };
 
@@ -395,11 +411,11 @@ export class VRRemoteBar {
 
     // Background fill
     if (isHovered) {
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
     } else if (isActive) {
-      ctx.fillStyle = 'rgba(30, 58, 138, 0.65)';
+      ctx.fillStyle = 'rgba(30, 58, 138, 0.70)';
     } else {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.80)';
     }
     ctx.beginPath();
     ctx.roundRect(4, 4, 432, 72, [14]);
@@ -468,6 +484,88 @@ export class VRRemoteBar {
     });
   }
 
+  /**
+   * Handle mouse move from remote controller (controller.html)
+   * @param {number} normX Normalized [0, 1] horizontal position
+   * @param {number} normY Normalized [0, 1] vertical position
+   */
+  onRemoteMouseMove(normX, normY) {
+    const nx = Math.max(0, Math.min(1, Number(normX) || 0));
+    const ny = Math.max(0, Math.min(1, Number(normY) || 0));
+
+    // Map normalized [0, 1] to panel local coordinates:
+    // Panel width = 2.14m (X from -1.07 to +1.07)
+    // Panel height = 0.62m (Y from +0.31 to -0.31)
+    const x = (nx - 0.5) * 2.14;
+    const y = (0.5 - ny) * 0.62;
+
+    this.targetCursorX = x;
+    this.targetCursorY = y;
+
+    if (this.reticleGroup) {
+      this.reticleGroup.visible = true;
+    }
+
+    // 2D Bounding Box Hit-Testing across all buttons
+    let hitButton = null;
+    for (let i = 0; i < this.buttons.length; i++) {
+      const btn = this.buttons[i];
+      const halfW = (btn.width || 0.44) * 0.5;
+      const halfH = (btn.height || 0.082) * 0.5;
+      if (
+        x >= (btn.colX - halfW) &&
+        x <= (btn.colX + halfW) &&
+        y >= (btn.y - halfH) &&
+        y <= (btn.y + halfH)
+      ) {
+        hitButton = btn;
+        break;
+      }
+    }
+
+    if (hitButton !== this.hoveredButton) {
+      if (this.hoveredButton) {
+        this.renderButtonCanvas(
+          this.hoveredButton.ctx,
+          this.hoveredButton.label,
+          false,
+          this.hoveredButton.isActive,
+          this.hoveredButton.colorTheme
+        );
+        this.hoveredButton.texture.needsUpdate = true;
+        this.hoveredButton.mesh.scale.set(1.0, 1.0, 1.0);
+      }
+
+      this.hoveredButton = hitButton;
+      this.dwellTime = 0;
+      this.updateDwellProgress(0);
+
+      if (hitButton) {
+        this.renderButtonCanvas(
+          hitButton.ctx,
+          hitButton.label,
+          true,
+          hitButton.isActive,
+          hitButton.colorTheme
+        );
+        hitButton.texture.needsUpdate = true;
+        hitButton.mesh.scale.set(1.06, 1.06, 1.0);
+      }
+    }
+  }
+
+  /**
+   * Handle mouse click from remote controller (controller.html)
+   */
+  onRemoteMouseClick(normX, normY) {
+    if (normX !== undefined && normY !== undefined) {
+      this.onRemoteMouseMove(normX, normY);
+    }
+    if (this.hoveredButton) {
+      this.triggerButton(this.hoveredButton);
+    }
+  }
+
   initInputListeners() {
     const trigger = () => {
       if (this.hoveredButton && this.hoveredButton.onClick) {
@@ -480,12 +578,12 @@ export class VRRemoteBar {
 
   triggerButton(btn) {
     if (!btn || this.actionCooldown > 0) return;
-    this.actionCooldown = 0.5; // 500ms cooldown to prevent double firing
+    this.actionCooldown = 0.4; // 400ms cooldown to prevent bounce
 
-    // Button trigger bounce
-    btn.mesh.scale.set(0.94, 0.94, 1.0);
+    // Button trigger bounce animation
+    btn.mesh.scale.set(0.92, 0.92, 1.0);
     setTimeout(() => {
-      btn.mesh.scale.set(1.0, 1.0, 1.0);
+      if (btn.mesh) btn.mesh.scale.set(1.0, 1.0, 1.0);
     }, 120);
 
     // Haptic feedback
@@ -507,80 +605,31 @@ export class VRRemoteBar {
       this.actionCooldown = Math.max(0, this.actionCooldown - delta);
     }
 
-    // Raycast from center of camera (forward vector)
-    const origin = new THREE.Vector3();
-    const forward = new THREE.Vector3(0, 0, -1);
-    this.camera.getWorldPosition(origin);
-    forward.applyQuaternion(this.camera.getWorldQuaternion(new THREE.Quaternion()));
-
-    this.raycaster.set(origin, forward);
-    const intersects = this.raycaster.intersectObjects(this.buttonMeshes, false);
-
-    let hitButton = null;
-    if (intersects.length > 0) {
-      const hitMesh = intersects[0].object;
-      hitButton = this.buttons.find(b => b.mesh === hitMesh) || null;
+    // Smoothly interpolate reticle position towards targetCursor
+    if (this.reticleGroup && this.targetCursorX !== undefined && this.targetCursorY !== undefined) {
+      this.reticleGroup.position.x += (this.targetCursorX - this.reticleGroup.position.x) * 0.4;
+      this.reticleGroup.position.y += (this.targetCursorY - this.reticleGroup.position.y) * 0.4;
+      this.reticleGroup.position.z = 0.04;
     }
 
-    // Gaze Hover & Dwell Logic
-    if (hitButton) {
-      if (this.hoveredButton !== hitButton) {
-        // Gaze entered new button
-        if (this.hoveredButton) {
-          this.renderButtonCanvas(
-            this.hoveredButton.ctx,
-            this.hoveredButton.label,
-            false,
-            this.hoveredButton.isActive,
-            this.hoveredButton.colorTheme
-          );
-          this.hoveredButton.texture.needsUpdate = true;
-          this.hoveredButton.mesh.scale.set(1.0, 1.0, 1.0);
-        }
+    // Dwell Progress when hovering over a button
+    if (this.hoveredButton) {
+      this.dwellTime += delta;
+      const progress = Math.min(this.dwellTime / this.requiredDwell, 1.0);
+      this.updateDwellProgress(progress);
 
-        this.hoveredButton = hitButton;
-        this.dwellTime = 0;
-        this.renderButtonCanvas(
-          hitButton.ctx,
-          hitButton.label,
-          true,
-          hitButton.isActive,
-          hitButton.colorTheme
-        );
-        hitButton.texture.needsUpdate = true;
-        hitButton.mesh.scale.set(1.05, 1.05, 1.0);
-      } else {
-        // Continuous gaze on current button: advance dwell timer
-        this.dwellTime += delta;
-        const progress = Math.min(this.dwellTime / this.requiredDwell, 1.0);
-        this.updateDwellProgress(progress);
-
-        if (progress >= 1.0) {
-          this.triggerButton(hitButton);
-        }
+      if (progress >= 1.0) {
+        this.triggerButton(this.hoveredButton);
       }
     } else {
-      if (this.hoveredButton) {
-        this.renderButtonCanvas(
-          this.hoveredButton.ctx,
-          this.hoveredButton.label,
-          false,
-          this.hoveredButton.isActive,
-          this.hoveredButton.colorTheme
-        );
-        this.hoveredButton.texture.needsUpdate = true;
-        this.hoveredButton.mesh.scale.set(1.0, 1.0, 1.0);
-        this.hoveredButton = null;
+      if (this.dwellTime > 0) {
+        this.dwellTime = 0;
+        this.updateDwellProgress(0);
       }
-      this.dwellTime = 0;
-      this.updateDwellProgress(0);
     }
   }
 
   setVisible(visible) {
     this.panelGroup.visible = visible;
-    if (this.reticleGroup) {
-      this.reticleGroup.visible = visible;
-    }
   }
 }
