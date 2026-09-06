@@ -281,6 +281,7 @@ export class NavigationController {
 
   setStage(stageIndex, animated = true, customDuration = null) {
     if (stageIndex < 0 || stageIndex >= this.stages.length) return;
+    this.autoRotate360 = false; // Disable camera orbital spinning so camera stops moving once arrived
     this.currentStageIndex = stageIndex;
     const stage = this.stages[stageIndex];
     const targetLook = this.getTargetWorldPosition();

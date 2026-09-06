@@ -127,9 +127,9 @@ export class App {
       onSelectStage: (idx) => {
         this.tourController.stopTour();
         this.hud.setTourState(false);
+        // Camera spinning should be OFF! Camera stops moving, only the object rotates & simulation runs
+        this.navigationController.autoRotate360 = false;
         this.selectStage(idx);
-        // Start continuous 360° turntable rotation & model spin until user stops it
-        this.navigationController.autoRotate360 = true;
         this.navigationController.startRotatingCurrentModel();
       },
       onToggleTour: () => {
@@ -151,17 +151,16 @@ export class App {
       },
       onToggleModelSpin: () => {
         const nav = this.navigationController;
-        if (nav.spinningModelIndex >= 0 || nav.autoRotate360) {
+        if (nav.spinningModelIndex >= 0) {
           nav.stopRotatingModel();
-          nav.autoRotate360 = false;
         } else {
           nav.startRotatingCurrentModel();
-          nav.autoRotate360 = true;
         }
+        nav.autoRotate360 = false;
       },
       onStartModelSpin: () => {
         this.navigationController.startRotatingCurrentModel();
-        this.navigationController.autoRotate360 = true;
+        this.navigationController.autoRotate360 = false;
       },
       onTogglePause: () => {
         this.hud.togglePause();
@@ -175,7 +174,7 @@ export class App {
       getStagesCallback: () => this.navigationController.stages,
       getCurrentStageIndex: () => this.navigationController.currentStageIndex,
       getIsTourPlaying: () => this.tourController.isPlaying,
-      getIsModelSpinning: () => (this.navigationController.spinningModelIndex >= 0 || this.navigationController.autoRotate360),
+      getIsModelSpinning: () => (this.navigationController.spinningModelIndex >= 0),
       getIsPaused: () => (this.simParams.simSpeed === 0),
       getActiveModule: () => this.activeModule,
       sendRemoteMessage: (msg) => {
@@ -543,6 +542,7 @@ export class App {
   }
 
   selectStage(stageIndex) {
+    this.navigationController.autoRotate360 = false;
     this.navigationController.setStage(stageIndex, true);
     this.onStageChanged(stageIndex);
   }
@@ -624,7 +624,7 @@ export class App {
     if (spinIdx >= 0 && spinIdx < this.stageModels.length) {
       const spinModel = this.stageModels[spinIdx];
       if (spinModel) {
-        const grp = spinModel.group || (spinModel.isObject3D ? spinModel : null);
+        const grp = spinModel.inspectPivot || spinModel.group || (spinModel.isObject3D ? spinModel : null);
         if (grp) {
           grp.rotation.y += this.navigationController.modelSpinSpeed * delta;
         }
