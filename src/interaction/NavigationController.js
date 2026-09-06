@@ -33,7 +33,7 @@ export class NavigationController {
     this.currentStageIndex = 0;
     this.isTransitioning = false;
     this.transitionProgress = 1.0;
-    this.transitionDuration = 1.4;
+    this.transitionDuration = 2.4; // Majestic cinematic glide duration
 
     // Auto 360 Spin
     this.autoRotate360 = false;
@@ -279,7 +279,7 @@ export class NavigationController {
     }
   }
 
-  setStage(stageIndex, animated = true) {
+  setStage(stageIndex, animated = true, customDuration = null) {
     if (stageIndex < 0 || stageIndex >= this.stages.length) return;
     this.currentStageIndex = stageIndex;
     const stage = this.stages[stageIndex];
@@ -292,6 +292,7 @@ export class NavigationController {
     const targetPos = targetLook.clone().add(offset);
 
     if (animated) {
+      this.transitionDuration = customDuration || 2.4;
       this.startPos.copy(this.cameraRig ? this.cameraRig.position : this.camera.position);
       this.targetPos.copy(targetPos);
       this.startLookAt.copy(this.currentLookAt);

@@ -487,7 +487,8 @@ export class App {
     this.navigationController.update(delta);
 
     // 2. Update guided tour
-    this.tourController.update(delta);
+    const simSpeed = this.simParams.simSpeed !== undefined ? this.simParams.simSpeed : 1.0;
+    this.tourController.update(delta * simSpeed);
 
     // 3. Update lighting
     this.lighting.update(delta, this.simParams);
