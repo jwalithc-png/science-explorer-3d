@@ -341,8 +341,10 @@ export class Gizmo3D {
     if (!this.selectedBody || !this.gizmoRoot.visible) return;
 
     if (this.selectedBody.getWorldPosition) {
+      if (this.selectedBody.updateMatrixWorld) this.selectedBody.updateMatrixWorld(true);
       this.selectedBody.getWorldPosition(this.centerPos);
     } else if (this.targetGroup) {
+      if (this.targetGroup.updateMatrixWorld) this.targetGroup.updateMatrixWorld(true);
       this.targetGroup.getWorldPosition(this.centerPos);
     }
     this.gizmoRoot.position.copy(this.centerPos);
@@ -354,10 +356,26 @@ export class Gizmo3D {
       this.gizmoRoot.quaternion.copy(this.targetGroup.getWorldQuaternion(new THREE.Quaternion()));
     }
 
-    // Screen-space constant scale based on camera distance - compact & smaller, tightly fitted
-    const dist = this.camera.position.distanceTo(this.centerPos);
-    const r = this.selectedBody.radius || (this.selectedBody.data && this.selectedBody.data.radius) || 1.8;
-    const scaleFactor = Math.max(r * 1.12, Math.min(dist * 0.08, 6.0));
+    // Accurate WORLD camera distance in VR / desktop
+    const camPos = new THREE.Vector3();
+    this.camera.getWorldPosition(camPos);
+    const dist = camPos.distanceTo(this.centerPos);
+
+    // Compute bounding radius dynamically for biological models or use radius
+    let r = this.selectedBody.radius || (this.selectedBody.data && this.selectedBody.data.radius);
+    if (!r && this.targetGroup) {
+      const box = new THREE.Box3().setFromObject(this.targetGroup);
+      if (!box.isEmpty()) {
+        const sphere = new THREE.Sphere();
+        box.getBoundingSphere(sphere);
+        if (sphere.radius > 0.5 && sphere.radius < 500) {
+          r = sphere.radius;
+        }
+      }
+    }
+    if (!r) r = 2.5;
+
+    const scaleFactor = Math.max(r * 1.15, Math.min(dist * 0.11, r * 2.2));
     this.gizmoRoot.scale.set(scaleFactor, scaleFactor, scaleFactor);
   }
 

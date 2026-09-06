@@ -277,6 +277,11 @@ export class App {
 
     this.activeModule = moduleId;
 
+    // 0. Detach active 3D Gizmo
+    if (this.gizmo3D) {
+      this.gizmo3D.detach();
+    }
+
     // 1. Remove old stage models from scene
     this.stageModels.forEach(model => {
       if (model && model.group) {
@@ -366,6 +371,8 @@ export class App {
 
     // 12. Rebuild 4 columns in VR Remote Bar for active module
     if (this.vrRemoteBar) {
+      this.vrRemoteBar.selectedModule = moduleId;
+      this.vrRemoteBar.selectedStageIndex = 0;
       this.vrRemoteBar.build4Columns();
     }
 

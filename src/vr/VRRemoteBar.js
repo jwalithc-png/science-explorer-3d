@@ -1,4 +1,13 @@
 import * as THREE from 'three';
+import { SOLAR_STAGES } from '../data/solarSystemStages.js';
+import { PHOTOSYNTHESIS_STAGES } from '../data/photosynthesisStages.js';
+import { CONCEPTION_STAGES } from '../data/conceptionStages.js';
+
+const MODULE_STAGES_MAP = {
+  solar: SOLAR_STAGES,
+  photosynthesis: PHOTOSYNTHESIS_STAGES,
+  reproduction: CONCEPTION_STAGES
+};
 
 /**
  * VR Remote Window Manager with Small Red Box & Popup Floating Window
@@ -225,6 +234,7 @@ export class VRRemoteBar {
     this.redBoxGroup.visible = false;
     this.currentView = 'objectPopup';
     this.selectedStageIndex = stageIndex;
+    this.selectedModule = (this.getActiveModule ? this.getActiveModule() : 'solar') || 'solar';
     this.pendingAction = { type: 'stage', index: stageIndex, moduleId: this.selectedModule };
 
     // Move camera to focus smoothly on this object
@@ -268,7 +278,7 @@ export class VRRemoteBar {
         this.onSelectStage(stageIdx);
       }
     } else if (action.type === 'tour') {
-      const targetMod = this.selectedModule;
+      const targetMod = action.moduleId || this.selectedModule;
       if (targetMod && targetMod !== this.getActiveModule()) {
         if (this.onSwitchModule) this.onSwitchModule(targetMod);
       }
@@ -281,6 +291,10 @@ export class VRRemoteBar {
       if (this.onStopTour) this.onStopTour();
       else if (this.onToggleTour) this.onToggleTour();
     } else if (action.type === 'spin') {
+      const targetMod = action.moduleId || this.selectedModule;
+      if (targetMod && targetMod !== this.getActiveModule()) {
+        if (this.onSwitchModule) this.onSwitchModule(targetMod);
+      }
       if (this.onStartModelSpin) {
         this.onStartModelSpin();
       } else if (this.onToggleModelSpin) {
@@ -557,7 +571,8 @@ export class VRRemoteBar {
       photosynthesis: '🌿 PLANT BIOLOGY — ALL OPTIONS',
       reproduction: '👶 HUMAN REPRODUCTION — ALL OPTIONS'
     };
-    const titleText = modTitles[this.selectedModule] || '3D EXPLORATION OPTIONS';
+    const targetMod = this.selectedModule || (this.getActiveModule ? this.getActiveModule() : 'solar') || 'solar';
+    const titleText = modTitles[targetMod] || '3D EXPLORATION OPTIONS';
 
     // Header title
     this.createWindowHeader(titleText, 0.05, 0.52);
@@ -593,9 +608,9 @@ export class VRRemoteBar {
       isActive: tourEffective,
       onClick: () => {
         if (tourEffective) {
-          this.pendingAction = { type: 'stopTour' };
+          this.pendingAction = { type: 'stopTour', moduleId: targetMod };
         } else {
-          this.pendingAction = { type: 'tour' };
+          this.pendingAction = { type: 'tour', moduleId: targetMod };
         }
         this.buildWindowContent();
         this.rebuildActiveButtons();
@@ -613,9 +628,9 @@ export class VRRemoteBar {
       isActive: spinEffective,
       onClick: () => {
         if (spinEffective) {
-          this.pendingAction = { type: 'stopSpin' };
+          this.pendingAction = { type: 'stopSpin', moduleId: targetMod };
         } else {
-          this.pendingAction = { type: 'spin' };
+          this.pendingAction = { type: 'spin', moduleId: targetMod };
         }
         this.buildWindowContent();
         this.rebuildActiveButtons();
@@ -632,7 +647,7 @@ export class VRRemoteBar {
       color: isPause ? '#ef4444' : '#38bdf8',
       isActive: isPause,
       onClick: () => {
-        this.pendingAction = { type: 'pause' };
+        this.pendingAction = { type: 'pause', moduleId: targetMod };
         this.buildWindowContent();
         this.rebuildActiveButtons();
       }
@@ -648,62 +663,66 @@ export class VRRemoteBar {
       color: '#38bdf8',
       isActive: false,
       onClick: () => {
-        this.pendingAction = { type: 'recenter' };
+        this.pendingAction = { type: 'recenter', moduleId: targetMod };
         this.buildWindowContent();
         this.rebuildActiveButtons();
       }
     });
 
-    // 2 Rows of 5 Stage Buttons (10 stages total)
-    const stages = this.getStagesCallback ? this.getStagesCallback() : [];
-    const activeStageIdx = this.getCurrentStageIndex ? this.getCurrentStageIndex() : 0;
+    // 2 Rows of Stage Buttons (dynamic for 9 or 10 stages)
+    const stages = MODULE_STAGES_MAP[targetMod] || (this.getStagesCallback ? this.getStagesCallback() : []);
 
     const row1Y = 0.16;
     const row2Y = -0.06;
-    const stageColXs = [-0.64, -0.32, 0.0, 0.32, 0.64];
+    const row1ColXs = [-0.64, -0.32, 0.0, 0.32, 0.64];
+    const row2Count = Math.max(0, stages.length - 5);
+    const row2ColXs = row2Count === 4
+      ? [-0.48, -0.16, 0.16, 0.48]
+      : [-0.64, -0.32, 0.0, 0.32, 0.64];
     const stageW = 0.30;
     const stageH = 0.16;
 
     // Row 1: Stages 0 to 4
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < Math.min(5, stages.length); i++) {
       const st = stages[i];
       if (!st) continue;
-      const isCur = (this.selectedStageIndex === i);
+      const isCur = (this.selectedStageIndex === i && this.selectedModule === targetMod);
       this.createStageCardButton({
         id: `sub_stage_${i}`,
         index: i,
         stage: st,
-        colX: stageColXs[i],
+        colX: row1ColXs[i],
         y: row1Y,
         width: stageW,
         height: stageH,
         isActive: isCur,
         onClick: () => {
           this.selectedStageIndex = i;
-          this.pendingAction = { type: 'stage', index: i, moduleId: this.selectedModule };
+          this.pendingAction = { type: 'stage', index: i, moduleId: targetMod };
           this.buildWindowContent();
           this.rebuildActiveButtons();
         }
       });
     }
 
-    // Row 2: Stages 5 to 9
-    for (let i = 5; i < 10; i++) {
+    // Row 2: Stages 5 to N
+    for (let i = 5; i < stages.length; i++) {
       const st = stages[i];
       if (!st) continue;
-      const isCur = (this.selectedStageIndex === i);
+      const isCur = (this.selectedStageIndex === i && this.selectedModule === targetMod);
+      const colIdx = i - 5;
       this.createStageCardButton({
         id: `sub_stage_${i}`,
         index: i,
         stage: st,
-        colX: stageColXs[i - 5],
+        colX: row2ColXs[colIdx] !== undefined ? row2ColXs[colIdx] : 0,
         y: row2Y,
         width: stageW,
         height: stageH,
         isActive: isCur,
         onClick: () => {
           this.selectedStageIndex = i;
-          this.pendingAction = { type: 'stage', index: i, moduleId: this.selectedModule };
+          this.pendingAction = { type: 'stage', index: i, moduleId: targetMod };
           this.buildWindowContent();
           this.rebuildActiveButtons();
         }
@@ -1004,7 +1023,8 @@ export class VRRemoteBar {
   // =========================================================================
   buildObjectPopupWindow(stageIndex) {
     this.windowButtons = [];
-    const stages = this.getStagesCallback ? this.getStagesCallback() : [];
+    const activeMod = (this.getActiveModule ? this.getActiveModule() : this.selectedModule) || 'solar';
+    const stages = MODULE_STAGES_MAP[activeMod] || (this.getStagesCallback ? this.getStagesCallback() : []);
     const stage = stages[stageIndex];
     if (!stage) return;
 
@@ -1552,8 +1572,8 @@ export class VRRemoteBar {
       // 2. Proximity Cone Hit Test (for easy targeting even on smaller bodies or from afar)
       if (!isHit) {
         const distToRay = this.sceneRaycaster.ray.distanceToPoint(worldPos);
-        const r = st.radius || (st.data && st.data.radius) || 2.0;
-        const hitThreshold = Math.max(3.8, r * 2.8, distToCam * 0.095);
+        const r = st.radius || (st.data && st.data.radius) || (st.vrOffsetDist ? st.vrOffsetDist * 0.38 : 3.5);
+        const hitThreshold = Math.max(5.0, r * 2.8, distToCam * 0.12);
         if (distToRay < hitThreshold) {
           isHit = true;
         }
