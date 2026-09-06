@@ -117,6 +117,9 @@ export class VRRemoteBar {
     // Physical tap / click listener on mobile screen
     this.initInputListeners();
 
+    // DOM Screen hold countdown & progress overlay
+    this.createObjectHoldDOMOverlay();
+
     // Build initial state (window closed, red box active)
     this.rebuildActiveButtons();
     this.setVisible(true);
@@ -1300,60 +1303,121 @@ export class VRRemoteBar {
     this.dwellMesh.geometry = new THREE.RingGeometry(0.032, 0.042, 32, 1, 0, arc);
   }
 
+  createObjectHoldDOMOverlay() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('vr-object-hold-overlay')) return;
+
+    const div = document.createElement('div');
+    div.id = 'vr-object-hold-overlay';
+    div.style.cssText = `
+      position: fixed;
+      bottom: 82px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.94);
+      border: 2px solid #f59e0b;
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.55), inset 0 0 15px rgba(245, 158, 11, 0.2);
+      border-radius: 18px;
+      padding: 12px 28px;
+      color: #ffffff;
+      font-family: 'Inter', -apple-system, sans-serif;
+      display: none;
+      z-index: 99999;
+      pointer-events: none;
+      text-align: center;
+      min-width: 320px;
+      backdrop-filter: blur(10px);
+    `;
+    div.innerHTML = `
+      <div id="hold-overlay-title" style="font-size: 17px; font-weight: 800; color: #fef08a; margin-bottom: 4px;">🪐 3D Object</div>
+      <div id="hold-overlay-sub" style="font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 8px;">Hold pointer: 0.0s / 5.0s (or Click to Open)</div>
+      <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.16); border-radius: 4px; overflow: hidden;">
+        <div id="hold-overlay-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 4px; transition: width 0.06s linear;"></div>
+      </div>
+    `;
+    document.body.appendChild(div);
+    this.domHoldOverlay = div;
+    this.domHoldTitle = div.querySelector('#hold-overlay-title');
+    this.domHoldSub = div.querySelector('#hold-overlay-sub');
+    this.domHoldBar = div.querySelector('#hold-overlay-bar');
+  }
+
   updateObjectHoldVisual(stage, progress, seconds) {
-    if (!this.objectHoldRingMesh || !this.objectHoldBadge) return;
-    this.objectHoldRingMesh.visible = true;
-    this.objectHoldBadge.visible = true;
+    if (this.reticleGroup) this.reticleGroup.visible = true;
 
-    const arc = Math.max(0.001, Math.min(progress * Math.PI * 2, Math.PI * 2));
-    this.objectHoldRingMesh.geometry.dispose();
-    this.objectHoldRingMesh.geometry = new THREE.RingGeometry(0.038, 0.048, 48, 1, 0, arc);
+    // 1. 3D In-VR Reticle Ring & Badge
+    if (this.objectHoldRingMesh && this.objectHoldBadge) {
+      this.objectHoldRingMesh.visible = true;
+      this.objectHoldBadge.visible = true;
 
-    const ctx = this.badgeCtx;
-    ctx.clearRect(0, 0, 460, 100);
+      const arc = Math.max(0.001, Math.min(progress * Math.PI * 2, Math.PI * 2));
+      this.objectHoldRingMesh.geometry.dispose();
+      this.objectHoldRingMesh.geometry = new THREE.RingGeometry(0.038, 0.048, 48, 1, 0, arc);
 
-    // Dark sleek container
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-    ctx.beginPath();
-    ctx.roundRect(4, 4, 452, 92, [18]);
-    ctx.fill();
+      const ctx = this.badgeCtx;
+      ctx.clearRect(0, 0, 460, 100);
 
-    // Amber border
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#f59e0b';
-    ctx.stroke();
+      // Dark sleek container
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+      ctx.beginPath();
+      ctx.roundRect(4, 4, 452, 92, [18]);
+      ctx.fill();
 
-    // Stage Name
-    const name = stage ? `${stage.icon || '🪐'} ${stage.shortName || stage.name}` : '3D Object';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px "Inter", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(name, 18, 32);
+      // Amber border
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.stroke();
 
-    // Countdown
-    const remaining = Math.max(0, 5.0 - seconds).toFixed(1);
-    ctx.fillStyle = '#fef08a';
-    ctx.font = '600 20px "Inter", sans-serif';
-    ctx.fillText(`Hold: ${seconds.toFixed(1)}s / 5.0s (Pop in ${remaining}s)`, 18, 66);
+      // Stage Name
+      const name = stage ? `${stage.icon || '🪐'} ${stage.shortName || stage.name}` : '3D Object';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px "Inter", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(name, 18, 32);
 
-    // Mini progress bar in badge
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-    ctx.beginPath();
-    ctx.roundRect(300, 58, 140, 14, [7]);
-    ctx.fill();
+      // Countdown
+      const remaining = Math.max(0, 5.0 - seconds).toFixed(1);
+      ctx.fillStyle = '#fef08a';
+      ctx.font = '600 20px "Inter", sans-serif';
+      ctx.fillText(`Hold: ${seconds.toFixed(1)}s / 5.0s (Pop in ${remaining}s)`, 18, 66);
 
-    ctx.fillStyle = '#f59e0b';
-    ctx.beginPath();
-    ctx.roundRect(300, 58, Math.max(8, 140 * progress), 14, [7]);
-    ctx.fill();
+      // Mini progress bar in badge
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+      ctx.beginPath();
+      ctx.roundRect(300, 58, 140, 14, [7]);
+      ctx.fill();
 
-    this.badgeTexture.needsUpdate = true;
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.roundRect(300, 58, Math.max(8, 140 * progress), 14, [7]);
+      ctx.fill();
+
+      this.badgeTexture.needsUpdate = true;
+    }
+
+    // 2. On-screen 2D DOM Overlay for Desktop & Mobile view
+    if (this.domHoldOverlay) {
+      this.domHoldOverlay.style.display = 'block';
+      if (this.domHoldTitle) {
+        this.domHoldTitle.textContent = stage ? `${stage.icon || '🪐'} ${stage.name}` : '3D Object';
+      }
+      if (this.domHoldSub) {
+        const rem = Math.max(0, 5.0 - seconds).toFixed(1);
+        this.domHoldSub.textContent = `🎯 Hold: ${seconds.toFixed(1)}s / 5.0s (Opening in ${rem}s — or Click to Open)`;
+      }
+      if (this.domHoldBar) {
+        this.domHoldBar.style.width = `${Math.min(100, progress * 100)}%`;
+      }
+    }
   }
 
   hideObjectHoldVisual() {
     if (this.objectHoldRingMesh) this.objectHoldRingMesh.visible = false;
     if (this.objectHoldBadge) this.objectHoldBadge.visible = false;
+    if (this.domHoldOverlay) {
+      this.domHoldOverlay.style.display = 'none';
+    }
   }
 
   updateGizmoReticleBadge(axis) {
@@ -1399,7 +1463,17 @@ export class VRRemoteBar {
   // 8. 3D SCENE OBJECT RAYCASTING & 5-SECOND HOLD DETECTION
   // =========================================================================
   checkObjectHover(delta) {
-    if (this.isWindowOpen || (this.gizmo3D && this.gizmo3D.activeHoverAxis)) {
+    if (this.isWindowOpen) {
+      if (this.objectHoldTimer > 0) {
+        this.objectHoldTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
+      }
+      return;
+    }
+
+    // Only suppress hold detection if actively dragging/hovering on an XYZ gizmo axis line
+    if (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible && this.gizmo3D.activeHoverAxis) {
       if (this.objectHoldTimer > 0) {
         this.objectHoldTimer = 0;
         this.hoveredObjectStageIndex = -1;
@@ -1412,6 +1486,9 @@ export class VRRemoteBar {
     const ny = this.currentNormY !== undefined ? this.currentNormY : 0.5;
     const ndcX = nx * 2 - 1;
     const ndcY = -(ny * 2 - 1);
+
+    // Update camera matrix world for accurate ray origin and direction
+    this.camera.updateMatrixWorld(true);
     this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
 
     const stages = this.getStagesCallback ? this.getStagesCallback() : [];
@@ -1420,7 +1497,10 @@ export class VRRemoteBar {
 
     let hitStageIdx = -1;
     let bestDist = Infinity;
-    const camPos = this.camera.position;
+
+    // Accurate WORLD camera position (not local 0,0,0 inside cameraRig)
+    const camPos = new THREE.Vector3();
+    this.camera.getWorldPosition(camPos);
     const worldPos = new THREE.Vector3();
 
     for (let i = 0; i < stages.length; i++) {
@@ -1429,13 +1509,21 @@ export class VRRemoteBar {
       if (!st) continue;
 
       worldPos.set(0, 0, 0);
+      let targetObj = null;
+
       if (model) {
-        if (model.getWorldPosition) {
-          model.getWorldPosition(worldPos);
-        } else if (model.group && model.group.getWorldPosition) {
+        if (model.group && model.group.getWorldPosition) {
+          model.group.updateMatrixWorld(true);
           model.group.getWorldPosition(worldPos);
-        } else if (model.isObject3D) {
+          targetObj = model.group;
+        } else if (model.getWorldPosition) {
+          model.updateMatrixWorld && model.updateMatrixWorld(true);
           model.getWorldPosition(worldPos);
+          targetObj = model;
+        } else if (model.isObject3D) {
+          model.updateMatrixWorld(true);
+          model.getWorldPosition(worldPos);
+          targetObj = model;
         }
       }
       if (worldPos.lengthSq() < 0.001 && st.lookAt) {
@@ -1444,18 +1532,36 @@ export class VRRemoteBar {
 
       // Check if in front of camera
       const toObj = worldPos.clone().sub(camPos);
-      if (this.sceneRaycaster.ray.direction.dot(toObj) <= 0) continue;
+      const distToCam = toObj.length();
+      if (distToCam < 0.01) continue;
 
-      const distToRay = this.sceneRaycaster.ray.distanceToPoint(worldPos);
-      const r = st.radius || 2.0;
-      const hitThreshold = Math.max(3.2, r * 2.8);
+      const toObjNorm = toObj.clone().normalize();
+      const fwdDot = this.sceneRaycaster.ray.direction.dot(toObjNorm);
+      if (fwdDot <= 0.05) continue; // Behind camera or outside visible field of view
 
-      if (distToRay < hitThreshold) {
-        const distToCam = camPos.distanceTo(worldPos);
-        if (distToCam < bestDist) {
-          bestDist = distToCam;
-          hitStageIdx = i;
+      let isHit = false;
+
+      // 1. Direct Three.js Mesh Raycast intersection test
+      if (targetObj) {
+        const hits = this.sceneRaycaster.intersectObject(targetObj, true);
+        if (hits && hits.length > 0) {
+          isHit = true;
         }
+      }
+
+      // 2. Proximity Cone Hit Test (for easy targeting even on smaller bodies or from afar)
+      if (!isHit) {
+        const distToRay = this.sceneRaycaster.ray.distanceToPoint(worldPos);
+        const r = st.radius || (st.data && st.data.radius) || 2.0;
+        const hitThreshold = Math.max(3.8, r * 2.8, distToCam * 0.095);
+        if (distToRay < hitThreshold) {
+          isHit = true;
+        }
+      }
+
+      if (isHit && distToCam < bestDist) {
+        bestDist = distToCam;
+        hitStageIdx = i;
       }
     }
 
@@ -1464,7 +1570,7 @@ export class VRRemoteBar {
         this.objectHoldTimer += delta;
       } else {
         this.hoveredObjectStageIndex = hitStageIdx;
-        this.objectHoldTimer = 0;
+        this.objectHoldTimer = 0.02;
       }
 
       const stage = stages[hitStageIdx];
@@ -1625,17 +1731,56 @@ export class VRRemoteBar {
     }
     if (this.hoveredButton) {
       this.triggerButton(this.hoveredButton);
+    } else if (!this.isWindowOpen && this.hoveredObjectStageIndex !== -1) {
+      const targetIdx = this.hoveredObjectStageIndex;
+      this.objectHoldTimer = 0;
+      this.hoveredObjectStageIndex = -1;
+      this.hideObjectHoldVisual();
+      if (navigator.vibrate) {
+        try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+      }
+      this.openObjectPopupWindow(targetIdx);
     }
   }
 
   initInputListeners() {
-    const trigger = () => {
-      if (this.hoveredButton && this.hoveredButton.onClick) {
-        this.triggerButton(this.hoveredButton);
+    if (typeof window === 'undefined') return;
+
+    const onMove = (clientX, clientY) => {
+      if (!window.innerWidth || !window.innerHeight) return;
+      const nx = clientX / window.innerWidth;
+      const ny = clientY / window.innerHeight;
+      this.onRemoteMouseMove(nx, ny);
+    };
+
+    window.addEventListener('pointermove', (e) => {
+      onMove(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches[0]) {
+        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    const trigger = (e) => {
+      if (e && e.clientX !== undefined && e.clientY !== undefined && window.innerWidth && window.innerHeight) {
+        const nx = e.clientX / window.innerWidth;
+        const ny = e.clientY / window.innerHeight;
+        this.onRemoteMouseClick(nx, ny);
+      } else {
+        this.onRemoteMouseClick();
       }
     };
+
     window.addEventListener('pointerdown', trigger);
-    window.addEventListener('touchstart', trigger, { passive: true });
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches[0]) {
+        trigger(e.touches[0]);
+      } else {
+        trigger();
+      }
+    }, { passive: true });
   }
 
   triggerButton(btn) {
