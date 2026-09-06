@@ -443,12 +443,16 @@ export class App {
   initRemoteRelay() {
     this.remoteRelay = new RemoteRelayClient({
       onMessage: (msg) => {
-        if (msg.type === 'remoteMouseMove') {
+        if (msg.type === 'toggleMouse') {
           if (this.vrRemoteBar) {
+            this.vrRemoteBar.toggleMouse(msg.enabled);
+          }
+        } else if (msg.type === 'remoteMouseMove') {
+          if (this.vrRemoteBar && this.vrRemoteBar.isMouseEnabled) {
             this.vrRemoteBar.onRemoteMouseMove(msg.x, msg.y);
           }
         } else if (msg.type === 'remoteMouseClick') {
-          if (this.vrRemoteBar) {
+          if (this.vrRemoteBar && this.vrRemoteBar.isMouseEnabled) {
             this.vrRemoteBar.onRemoteMouseClick(msg.x, msg.y);
           }
         } else if (msg.type === 'drag') {
@@ -510,7 +514,12 @@ export class App {
         this.selectStage(9);
       } else if (e.code === 'Space') {
         e.preventDefault();
-        this.hud.togglePause();
+        if (this.vrRemoteBar) {
+          const isEnabled = this.vrRemoteBar.toggleMouse();
+          if (this.remoteRelay) {
+            this.remoteRelay.sendMessage({ type: 'mouseState', enabled: isEnabled });
+          }
+        }
       } else if (e.key === 'Tab') {
         e.preventDefault();
         const modules = ['solar', 'photosynthesis', 'reproduction'];

@@ -83,6 +83,24 @@
       box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
     }
 
+    .btn-mouse-on {
+      background: rgba(34, 197, 94, 0.2) !important;
+      border-color: #22c55e !important;
+      color: #4ade80 !important;
+    }
+    .btn-mouse-off {
+      background: rgba(239, 68, 68, 0.2) !important;
+      border-color: #ef4444 !important;
+      color: #f87171 !important;
+    }
+    #trackpad.mouse-disabled {
+      background: radial-gradient(circle at 50% 12%, rgba(20, 10, 10, 0.9), rgba(5, 5, 10, 0.98) 75%) !important;
+      border-color: rgba(239, 68, 68, 0.5) !important;
+    }
+    #trackpad.mouse-disabled #trackpad-mouse-cursor {
+      display: none !important;
+    }
+
     /* Interactive VR Window State Banner */
     #vr-state-banner {
       background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(56, 189, 248, 0.15));
@@ -313,6 +331,7 @@
     <span id="status-text">Connecting to 3D simulation...</span>
     <div class="status-right-group">
       <span id="ping-indicator">🔴 Offline</span>
+      <button class="btn-fs btn-mouse-on" id="btnToggleMouse" title="Toggle Mouse Pointer (Spacebar)">🖱️ Mouse: ON (Space)</button>
       <button class="btn-fs" id="btnFullscreen" title="Toggle Fullscreen">⛶ Fullscreen</button>
     </div>
   </div>
@@ -346,6 +365,7 @@
 
   <!-- Clean Bottom Utility Controls -->
   <div class="bottom-utility-bar">
+    <button class="btn-util btn-mouse-on" id="btnMouseToggle" title="Toggle Mouse Pointer (Spacebar)">🖱️ Mouse: ON (Space)</button>
     <button class="btn-util" id="btnTour">🎬 Stranger Things Tour</button>
     <button class="btn-util" id="btnSpin">🔄 Spin Model 360°</button>
     <button class="btn-util" id="btnPause">⏸ Pause / Resume</button>
@@ -423,10 +443,59 @@
             updateWindowStateUI(isWindowOpen, msg.view);
           } else if (msg.type === 'stageChanged') {
             showToast(`Tracking: ${msg.stage ? msg.stage.name : 'Stage ' + msg.stageIndex}`);
+          } else if (msg.type === 'mouseState') {
+            updateMouseUI(msg.enabled);
           }
         } catch(err) {}
       };
     }
+
+    let isMouseEnabled = true;
+    const btnToggleMouse = document.getElementById('btnToggleMouse');
+    const btnMouseToggle = document.getElementById('btnMouseToggle');
+
+    function updateMouseUI(enabled) {
+      isMouseEnabled = Boolean(enabled);
+      if (btnToggleMouse) {
+        btnToggleMouse.textContent = isMouseEnabled ? '🖱️ Mouse: ON (Space)' : '🚫 Mouse: OFF (Space)';
+        btnToggleMouse.className = isMouseEnabled ? 'btn-fs btn-mouse-on' : 'btn-fs btn-mouse-off';
+      }
+      if (btnMouseToggle) {
+        btnMouseToggle.textContent = isMouseEnabled ? '🖱️ Mouse: ON (Space)' : '🚫 Mouse: OFF (Space)';
+        btnMouseToggle.className = isMouseEnabled ? 'btn-util btn-mouse-on' : 'btn-util btn-mouse-off';
+      }
+      if (trackpad) {
+        if (!isMouseEnabled) {
+          trackpad.classList.add('mouse-disabled');
+          trackpadMouseCursor.classList.remove('visible');
+        } else {
+          trackpad.classList.remove('mouse-disabled');
+        }
+        const titleElem = trackpad.querySelector('.watermark-title');
+        const subElem = trackpad.querySelector('.watermark-sub');
+        if (titleElem && subElem) {
+          if (!isMouseEnabled) {
+            titleElem.textContent = '🚫 Mouse Pointer is OFF';
+            titleElem.style.color = '#ef4444';
+            subElem.innerHTML = 'Press <strong>Spacebar</strong> or touch the <strong>[🖱️ Mouse (Space)]</strong> button to turn mouse pointer ON.';
+          } else {
+            titleElem.textContent = 'Free Space Mouse Trackpad';
+            titleElem.style.color = '#38bdf8';
+            subElem.innerHTML = 'Move mouse freely inside this box to control the circle pointer in VR.<br>Click the top Red Box to open the 3 Options Window. Pick an option and click [✕] to close &amp; fly!';
+          }
+        }
+      }
+    }
+
+    function toggleMousePointer() {
+      isMouseEnabled = !isMouseEnabled;
+      updateMouseUI(isMouseEnabled);
+      send({ type: 'toggleMouse', enabled: isMouseEnabled });
+      showToast(isMouseEnabled ? '🖱️ Mouse Pointer: ON' : '🚫 Mouse Pointer: OFF');
+    }
+
+    if (btnToggleMouse) btnToggleMouse.addEventListener('click', toggleMousePointer);
+    if (btnMouseToggle) btnMouseToggle.addEventListener('click', toggleMousePointer);
 
     function updateWindowStateUI(open, view) {
       if (open) {
@@ -463,6 +532,7 @@
     let dragDist = 0;
 
     trackpad.addEventListener('pointerenter', () => {
+      if (!isMouseEnabled) return;
       trackpadMouseCursor.classList.add('visible');
     });
 
@@ -472,6 +542,7 @@
     });
 
     trackpad.addEventListener('pointermove', (e) => {
+      if (!isMouseEnabled) return;
       const rect = trackpad.getBoundingClientRect();
       const localX = e.clientX - rect.left;
       const localY = e.clientY - rect.top;
@@ -509,6 +580,10 @@
     });
 
     trackpad.addEventListener('pointerdown', (e) => {
+      if (!isMouseEnabled) {
+        toggleMousePointer();
+        return;
+      }
       isMouseDown = true;
       startX = lastX = e.clientX;
       startY = lastY = e.clientY;
@@ -588,7 +663,11 @@
 
     // Global Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      if (e.key.toLowerCase() === 'a') {
+      if (e.code === 'Space') {
+        if (e.target && e.target.closest && e.target.closest('input, textarea')) return;
+        e.preventDefault();
+        toggleMousePointer();
+      } else if (e.key.toLowerCase() === 'a') {
         isTouring = !isTouring;
         send({ type: 'tour' });
         showToast('Toggled Cinematic Tour');

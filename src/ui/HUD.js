@@ -255,7 +255,7 @@ export class HUD {
                 </tr>
                 <tr>
                   <td><span class="kbd-chip">Space</span></td>
-                  <td><strong>Pause / Resume</strong> live simulation</td>
+                  <td><strong>Toggle Mouse Pointer ON / OFF</strong> in VR, Desktop & Mobile</td>
                 </tr>
                 <tr>
                   <td><span class="kbd-chip">N</span></td>

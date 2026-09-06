@@ -126,6 +126,11 @@ export class VRRemoteBar {
     // Physical tap / click listener on mobile screen
     this.initInputListeners();
 
+    // Free-Space Mouse Pointer State (Spacebar toggles ON / OFF)
+    this.isMouseEnabled = true;
+    this.mouseToastTimer = null;
+    this.createMouseToggleToast();
+
     // DOM Screen hold countdown & progress overlay
     this.createObjectHoldDOMOverlay();
 
@@ -1323,6 +1328,109 @@ export class VRRemoteBar {
     this.dwellMesh.geometry = new THREE.RingGeometry(0.032, 0.042, 32, 1, 0, arc);
   }
 
+  createMouseToggleToast() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('vr-mouse-toggle-toast')) return;
+
+    const div = document.createElement('div');
+    div.id = 'vr-mouse-toggle-toast';
+    div.style.cssText = `
+      position: fixed;
+      top: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.6);
+      border-radius: 24px;
+      padding: 10px 26px;
+      color: #ffffff;
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      display: none;
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 100000;
+      pointer-events: none;
+      text-align: center;
+      backdrop-filter: blur(12px);
+    `;
+    document.body.appendChild(div);
+    this.domMouseToast = div;
+  }
+
+  showMouseStateNotification(enabled) {
+    if (!this.domMouseToast) {
+      this.createMouseToggleToast();
+    }
+    if (this.domMouseToast) {
+      const color = enabled ? '#22c55e' : '#ef4444';
+      const glow = enabled ? 'rgba(34, 197, 94, 0.65)' : 'rgba(239, 68, 68, 0.65)';
+      const text = enabled
+        ? '🖱️ MOUSE POINTER: [ ON ]  <span style="font-size: 12px; font-weight: 600; color: #94a3b8; margin-left: 8px;">(Space to Turn Off)</span>'
+        : '🚫 MOUSE POINTER: [ OFF ]  <span style="font-size: 12px; font-weight: 600; color: #94a3b8; margin-left: 8px;">(Space to Turn On)</span>';
+
+      this.domMouseToast.style.borderColor = color;
+      this.domMouseToast.style.boxShadow = `0 0 30px ${glow}`;
+      this.domMouseToast.innerHTML = text;
+      this.domMouseToast.style.display = 'block';
+
+      // Animate in
+      requestAnimationFrame(() => {
+        if (this.domMouseToast) {
+          this.domMouseToast.style.opacity = '1';
+          this.domMouseToast.style.transform = 'translateX(-50%) translateY(0px)';
+        }
+      });
+
+      if (this.mouseToastTimer) clearTimeout(this.mouseToastTimer);
+      this.mouseToastTimer = setTimeout(() => {
+        if (this.domMouseToast) {
+          this.domMouseToast.style.opacity = '0';
+          this.domMouseToast.style.transform = 'translateX(-50%) translateY(-15px)';
+          setTimeout(() => {
+            if (this.domMouseToast) this.domMouseToast.style.display = 'none';
+          }, 260);
+        }
+      }, 1900);
+    }
+  }
+
+  toggleMouse(forceState) {
+    const newState = (forceState !== undefined) ? Boolean(forceState) : !this.isMouseEnabled;
+    this.setMouseEnabled(newState);
+    return this.isMouseEnabled;
+  }
+
+  setMouseEnabled(enabled) {
+    this.isMouseEnabled = Boolean(enabled);
+
+    if (!this.isMouseEnabled) {
+      if (this.reticleGroup) this.reticleGroup.visible = false;
+      this.objectHoldTimer = 0;
+      this.hoveredObjectStageIndex = -1;
+      this.hideObjectHoldVisual();
+      this.hideGizmoReticleBadge();
+
+      if (this.hoveredButton) {
+        this.setButtonHoverVisual(this.hoveredButton, false);
+        this.hoveredButton = null;
+      }
+      this.dwellTime = 0;
+      this.updateDwellProgress(0);
+    } else {
+      if (this.reticleGroup) this.reticleGroup.visible = true;
+    }
+
+    this.showMouseStateNotification(this.isMouseEnabled);
+
+    if (this.sendRemoteMessage) {
+      this.sendRemoteMessage({ type: 'mouseState', enabled: this.isMouseEnabled });
+    }
+  }
+
   createObjectHoldDOMOverlay() {
     if (typeof document === 'undefined') return;
     if (document.getElementById('vr-object-hold-overlay')) return;
@@ -1619,6 +1727,8 @@ export class VRRemoteBar {
   // 9. REAL-TIME REMOTE MOUSE DRIVING
   // =========================================================================
   onRemoteMouseMove(normX, normY) {
+    if (!this.isMouseEnabled) return;
+
     const nx = Math.max(0, Math.min(1, Number(normX) || 0));
     const ny = Math.max(0, Math.min(1, Number(normY) || 0));
 
@@ -1746,6 +1856,8 @@ export class VRRemoteBar {
   }
 
   onRemoteMouseClick(normX, normY) {
+    if (!this.isMouseEnabled) return;
+
     if (normX !== undefined && normY !== undefined) {
       this.onRemoteMouseMove(normX, normY);
     }
@@ -1766,7 +1878,17 @@ export class VRRemoteBar {
   initInputListeners() {
     if (typeof window === 'undefined') return;
 
+    // Spacebar toggles mouse pointer ON / OFF
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        if (e.target && e.target.closest && e.target.closest('input, textarea')) return;
+        e.preventDefault();
+        this.toggleMouse();
+      }
+    });
+
     const onMove = (clientX, clientY) => {
+      if (!this.isMouseEnabled) return;
       if (!window.innerWidth || !window.innerHeight) return;
       const nx = clientX / window.innerWidth;
       const ny = clientY / window.innerHeight;
@@ -1784,6 +1906,7 @@ export class VRRemoteBar {
     }, { passive: true });
 
     const trigger = (e) => {
+      if (!this.isMouseEnabled) return;
       if (e && e.clientX !== undefined && e.clientY !== undefined && window.innerWidth && window.innerHeight) {
         const nx = e.clientX / window.innerWidth;
         const ny = e.clientY / window.innerHeight;
@@ -1827,6 +1950,13 @@ export class VRRemoteBar {
   update(delta) {
     if (this.actionCooldown > 0) {
       this.actionCooldown = Math.max(0, this.actionCooldown - delta);
+    }
+
+    if (!this.isMouseEnabled) {
+      if (this.reticleGroup && this.reticleGroup.visible) {
+        this.reticleGroup.visible = false;
+      }
+      return;
     }
 
     // Smoothly interpolate reticle position towards targetCursor
