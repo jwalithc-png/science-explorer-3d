@@ -99,6 +99,11 @@ export class App {
       () => this.webXRManager.getIsVR(),
       (stageIdx) => this.stageModels[stageIdx]
     );
+    this.navigationController.onTransitionCompleteCallback = (stageIndex) => {
+      if (this.sceneManager.isDualScreenVR) {
+        this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
+      }
+    };
 
     // 6. Guided Cinematic Tour Controller
     this.tourController = new TourController(

@@ -253,18 +253,31 @@ export class NavigationController {
     this.transitionProgress = 0;
   }
 
-  getTargetWorldPosition() {
-    const model = this.getActiveModelCallback ? this.getActiveModelCallback(this.currentStageIndex) : null;
-    if (model && model.group) {
+  getStageWorldPosition(stageIdx) {
+    if (stageIdx < 0 || stageIdx >= this.stages.length) return new THREE.Vector3();
+    const model = this.getActiveModelCallback ? this.getActiveModelCallback(stageIdx) : null;
+    if (model) {
       const worldPos = new THREE.Vector3();
-      model.group.getWorldPosition(worldPos);
-      return worldPos;
+      if (model.getWorldPosition) {
+        model.getWorldPosition(worldPos);
+        return worldPos;
+      } else if (model.group && model.group.getWorldPosition) {
+        model.group.getWorldPosition(worldPos);
+        return worldPos;
+      } else if (model.isObject3D) {
+        model.getWorldPosition(worldPos);
+        return worldPos;
+      }
     }
-    const stage = this.stages[this.currentStageIndex];
+    const stage = this.stages[stageIdx];
     if (stage && stage.lookAt) {
       return new THREE.Vector3(stage.lookAt.x, stage.lookAt.y || 0, stage.lookAt.z || 0);
     }
     return new THREE.Vector3(0, 0, 0);
+  }
+
+  getTargetWorldPosition() {
+    return this.getStageWorldPosition(this.currentStageIndex);
   }
 
   updateCameraFromSpherical() {
@@ -290,39 +303,77 @@ export class NavigationController {
   setStage(stageIndex, animated = true, customDuration = null) {
     if (stageIndex < 0 || stageIndex >= this.stages.length) return;
     this.autoRotate360 = false; // Disable camera orbital spinning so camera stops moving once arrived
+
+    const prevStageIndex = this.currentStageIndex;
     this.currentStageIndex = stageIndex;
     const stage = this.stages[stageIndex];
-    const targetLook = this.getTargetWorldPosition();
+    const targetLook = this.getStageWorldPosition(stageIndex);
 
     const dist = stage.vrOffsetDist || (stage.cameraPos ? Math.hypot(stage.cameraPos.x - (stage.lookAt ? stage.lookAt.x : 0), stage.cameraPos.z - (stage.lookAt ? stage.lookAt.z : 0)) : 25);
-    this.spherical.radius = Math.max(6, dist);
+    
+    // Position directly in front of the target along the +Z axis so default forward gaze (-Z) looks straight at the object!
+    this.spherical.set(Math.max(5, dist), Math.PI * 0.5, 0);
+    const finalTargetPos = targetLook.clone().add(new THREE.Vector3(0, 0, dist));
 
-    const offset = new THREE.Vector3().setFromSpherical(this.spherical);
-    const targetPos = targetLook.clone().add(offset);
+    if (animated && prevStageIndex !== stageIndex) {
+      const startCamPos = (this.cameraRig ? this.cameraRig.position : this.camera.position).clone();
+      const startLook = this.currentLookAt.clone();
 
-    if (animated) {
-      this.transitionDuration = customDuration || 2.4;
-      this.startPos.copy(this.cameraRig ? this.cameraRig.position : this.camera.position);
-      this.targetPos.copy(targetPos);
-      this.startLookAt.copy(this.currentLookAt);
-      this.targetLookAt.copy(targetLook);
-      this.isTransitioning = true;
-      this.transitionProgress = 0;
-    } else {
-      this.currentLookAt.copy(targetLook);
-      if (this.cameraRig) {
-        this.cameraRig.position.copy(targetPos);
-        if (this.isVRCallback && this.isVRCallback()) {
-          this.cameraRig.quaternion.identity();
-        } else {
-          this.cameraRig.lookAt(this.currentLookAt);
-          this.camera.position.set(0, 0, 0);
-          this.camera.rotation.set(0, 0, 0);
+      const numSteps = Math.abs(stageIndex - prevStageIndex);
+      const stepDir = stageIndex > prevStageIndex ? 1 : -1;
+
+      const pathPoints = [startCamPos];
+      const lookPoints = [startLook];
+
+      if (numSteps > 1) {
+        // Multi-stage journey (e.g. 1 to 8): Travel through each intermediate object in sequence!
+        for (let i = prevStageIndex + stepDir; i !== stageIndex; i += stepDir) {
+          const interStage = this.stages[i];
+          const interCenter = this.getStageWorldPosition(i);
+          const interDist = interStage.vrOffsetDist || (interStage.cameraPos ? Math.hypot(interStage.cameraPos.x - (interStage.lookAt ? interStage.lookAt.x : 0), interStage.cameraPos.z - (interStage.lookAt ? interStage.lookAt.z : 0)) : 22);
+
+          // Flyby camera position: placed in front and slightly elevated so the intermediate object flies right past the user's forward view!
+          const flybyPos = interCenter.clone().add(new THREE.Vector3(0, interDist * 0.18, interDist * 0.95));
+          pathPoints.push(flybyPos);
+          lookPoints.push(interCenter.clone());
         }
       } else {
-        this.camera.position.copy(targetPos);
+        // Adjacent step (e.g. 1 to 2): smooth elevated arc
+        const midCenter = startLook.clone().lerp(targetLook, 0.5);
+        const midDist = startCamPos.distanceTo(finalTargetPos);
+        const arcPos = startCamPos.clone().lerp(finalTargetPos, 0.5).add(new THREE.Vector3(0, Math.min(midDist * 0.16, 10), 0));
+        pathPoints.push(arcPos);
+        lookPoints.push(midCenter);
+      }
+
+      pathPoints.push(finalTargetPos);
+      lookPoints.push(targetLook.clone());
+
+      this.travelCurve = new THREE.CatmullRomCurve3(pathPoints);
+      this.travelCurve.curveType = 'catmullrom';
+      this.travelCurve.tension = 0.45;
+
+      this.lookAtCurve = new THREE.CatmullRomCurve3(lookPoints);
+      this.lookAtCurve.curveType = 'catmullrom';
+      this.lookAtCurve.tension = 0.45;
+
+      this.transitionDuration = customDuration || Math.min(8.0, Math.max(2.4, 1.8 + numSteps * 0.75));
+      this.transitionProgress = 0;
+      this.isTransitioning = true;
+    } else {
+      // Immediate placement or same-stage re-centering
+      this.currentLookAt.copy(targetLook);
+      if (this.cameraRig) {
+        this.cameraRig.position.copy(finalTargetPos);
+        this.cameraRig.quaternion.identity();
+      } else {
+        this.camera.position.copy(finalTargetPos);
         this.camera.lookAt(this.currentLookAt);
       }
+      this.isTransitioning = false;
+      this.transitionProgress = 1.0;
+      this.travelCurve = null;
+      this.lookAtCurve = null;
     }
   }
 
@@ -428,28 +479,77 @@ export class NavigationController {
       const t = this.transitionProgress;
       const ease = t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
-      const dynamicTarget = this.getTargetWorldPosition();
-      this.targetLookAt.copy(dynamicTarget);
+      if (this.travelCurve && this.lookAtCurve) {
+        const currentPos = this.travelCurve.getPoint(ease);
+        const currentLook = this.lookAtCurve.getPoint(ease);
+        this.currentLookAt.copy(currentLook);
 
-      this.currentLookAt.lerpVectors(this.startLookAt, this.targetLookAt, ease);
-
-      if (this.cameraRig) {
-        this.cameraRig.position.lerpVectors(this.startPos, this.targetPos, ease);
-        if (this.isVRCallback && this.isVRCallback()) {
-          this.cameraRig.quaternion.identity();
+        if (this.cameraRig) {
+          this.cameraRig.position.copy(currentPos);
+          if (this.isVRCallback && this.isVRCallback()) {
+            // In VR mode: align camera rig heading along flight direction / lookAt
+            // As ease approaches 1.0, currentPos -> finalTargetPos on +Z, so fwd -> (0, 0, -1) -> identity quaternion!
+            const fwd = new THREE.Vector3().subVectors(currentLook, currentPos);
+            fwd.y = 0;
+            if (fwd.lengthSq() > 0.001) {
+              fwd.normalize();
+              const yaw = Math.atan2(-fwd.x, -fwd.z);
+              this.cameraRig.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+            } else {
+              this.cameraRig.quaternion.identity();
+            }
+          } else {
+            this.cameraRig.lookAt(this.currentLookAt);
+            this.camera.position.set(0, 0, 0);
+            this.camera.rotation.set(0, 0, 0);
+          }
         } else {
-          this.cameraRig.lookAt(this.currentLookAt);
-          this.camera.position.set(0, 0, 0);
-          this.camera.rotation.set(0, 0, 0);
+          this.camera.position.copy(currentPos);
+          this.camera.lookAt(this.currentLookAt);
         }
       } else {
-        this.camera.position.lerpVectors(this.startPos, this.targetPos, ease);
-        this.camera.lookAt(this.currentLookAt);
+        const dynamicTarget = this.getTargetWorldPosition();
+        this.targetLookAt.copy(dynamicTarget);
+        this.currentLookAt.lerpVectors(this.startLookAt, this.targetLookAt, ease);
+
+        if (this.cameraRig) {
+          this.cameraRig.position.lerpVectors(this.startPos, this.targetPos, ease);
+          if (this.isVRCallback && this.isVRCallback()) {
+            this.cameraRig.quaternion.identity();
+          } else {
+            this.cameraRig.lookAt(this.currentLookAt);
+            this.camera.position.set(0, 0, 0);
+            this.camera.rotation.set(0, 0, 0);
+          }
+        } else {
+          this.camera.position.lerpVectors(this.startPos, this.targetPos, ease);
+          this.camera.lookAt(this.currentLookAt);
+        }
       }
 
       if (!this.isTransitioning) {
-        const offset = (this.cameraRig ? this.cameraRig.position : this.camera.position).clone().sub(this.currentLookAt);
-        this.spherical.setFromVector3(offset);
+        // Flight completed: arrive precisely in front of target along +Z axis
+        const targetLook = this.getTargetWorldPosition();
+        this.currentLookAt.copy(targetLook);
+        const stage = this.stages[this.currentStageIndex];
+        const dist = stage.vrOffsetDist || (stage.cameraPos ? Math.hypot(stage.cameraPos.x - (stage.lookAt ? stage.lookAt.x : 0), stage.cameraPos.z - (stage.lookAt ? stage.lookAt.z : 0)) : 25);
+        const frontPos = targetLook.clone().add(new THREE.Vector3(0, 0, dist));
+
+        if (this.cameraRig) {
+          this.cameraRig.position.copy(frontPos);
+          this.cameraRig.quaternion.identity();
+        } else {
+          this.camera.position.copy(frontPos);
+          this.camera.lookAt(targetLook);
+        }
+
+        this.spherical.set(dist, Math.PI * 0.5, 0);
+        this.travelCurve = null;
+        this.lookAtCurve = null;
+
+        if (this.onTransitionCompleteCallback) {
+          this.onTransitionCompleteCallback(this.currentStageIndex);
+        }
       }
     } else {
       // Dynamic live target tracking (unless user manually panned away or is dragging)
