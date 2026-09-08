@@ -109,7 +109,8 @@ export class App {
     this.tourController = new TourController(
       this.navigationController,
       this.audioManager,
-      (stageIdx) => this.onStageChanged(stageIdx)
+      (stageIdx) => this.onStageChanged(stageIdx),
+      () => this.stageModels
     );
 
     // 7. Spatial VR 3D Info Panel
@@ -691,10 +692,11 @@ export class App {
       }
     });
 
-    // 5b. Spin the selected model on its own Y-axis (runs continuously, paused while using XYZ gizmo)
+    // 5b. Spin the selected model on its own Y-axis (runs continuously, paused while using XYZ gizmo or during tour)
     const isGizmoActive = this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible;
+    const isTourActive = this.tourController && this.tourController.isPlaying;
     const spinIdx = this.navigationController.spinningModelIndex;
-    if (!isGizmoActive && spinIdx >= 0 && spinIdx < this.stageModels.length) {
+    if (!isGizmoActive && !isTourActive && spinIdx >= 0 && spinIdx < this.stageModels.length) {
       const spinModel = this.stageModels[spinIdx];
       if (spinModel) {
         const grp = spinModel.inspectPivot || spinModel.group || (spinModel.isObject3D ? spinModel : null);
@@ -704,8 +706,8 @@ export class App {
       }
     }
 
-    // In Dual-Screen VR, keep heading locked on active model during continuous 360° orbit or tour
-    if (this.sceneManager.isDualScreenVR && (this.navigationController.autoRotate360 || this.tourController.isPlaying)) {
+    // In Dual-Screen VR, keep heading locked on active model during continuous 360° orbit
+    if (this.sceneManager.isDualScreenVR && this.navigationController.autoRotate360) {
       this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
     }
 
