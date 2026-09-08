@@ -85,11 +85,11 @@ export class VRRemoteBar {
     this.pendingAction = null; // { type: 'stage', index: number }
     this.audioPlayingStageIndex = null;
 
-    // 3D Scene Direct Object Selection (Hold 5 seconds)
+    // 3D Scene Direct Object Selection (Double-Click / Double-Tap)
     this.sceneRaycaster = new THREE.Raycaster();
     this.hoveredObjectStageIndex = -1;
-    this.objectHoldTimer = 0;
-    this.hoverGraceTimer = 0;
+    this.lastClickTime = 0;
+    this.lastClickStageIdx = -1;
     this.currentNormX = 0.5;
     this.currentNormY = 0.5;
 
@@ -1731,23 +1731,13 @@ export class VRRemoteBar {
 
   checkObjectHover(delta) {
     if (this.isWindowOpen) {
-      if (this.objectHoldTimer > 0) {
-        this.objectHoldTimer = 0;
-        this.hoveredObjectStageIndex = -1;
-        this.hideObjectHoldVisual();
-      }
-      this.hoverGraceTimer = 0;
+      this.hoveredObjectStageIndex = -1;
       return;
     }
 
-    // Only suppress hold detection if actively dragging an XYZ gizmo axis line
+    // Suppress hover detection if actively dragging an XYZ gizmo axis line
     if (this.gizmo3D && this.gizmo3D.isDragging) {
-      if (this.objectHoldTimer > 0) {
-        this.objectHoldTimer = 0;
-        this.hoveredObjectStageIndex = -1;
-        this.hideObjectHoldVisual();
-      }
-      this.hoverGraceTimer = 0;
+      this.hoveredObjectStageIndex = -1;
       return;
     }
 
@@ -1760,52 +1750,8 @@ export class VRRemoteBar {
     this.camera.updateMatrixWorld(true);
     this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
 
-    const stages = this.getStagesCallback ? this.getStagesCallback() : [];
-    if (!stages || stages.length === 0) return;
-
     const hitStageIdx = this.getIntersectedStageIndex(this.sceneRaycaster);
-
-    if (hitStageIdx !== -1) {
-      this.hoverGraceTimer = 0.55; // 550ms grace window for micro-jitter/hand drift
-      if (this.hoveredObjectStageIndex === hitStageIdx) {
-        this.objectHoldTimer += delta;
-      } else {
-        this.hoveredObjectStageIndex = hitStageIdx;
-        this.objectHoldTimer = 0.05;
-      }
-
-      const stage = stages[hitStageIdx];
-      const holdProgress = Math.min(this.objectHoldTimer / 5.0, 1.0);
-      this.updateObjectHoldVisual(stage, holdProgress, this.objectHoldTimer);
-
-      if (this.objectHoldTimer >= 5.0) {
-        this.objectHoldTimer = 0;
-        this.hoverGraceTimer = 0;
-        this.hoveredObjectStageIndex = -1;
-        this.hideObjectHoldVisual();
-        if (navigator.vibrate) {
-          try { navigator.vibrate([60, 40, 60]); } catch (e) {}
-        }
-        this.openObjectPopupWindow(hitStageIdx);
-      }
-    } else {
-      // Not intersecting right this instant - apply grace period
-      if (this.hoverGraceTimer > 0) {
-        this.hoverGraceTimer -= delta;
-        // Keep visual and hold timer alive during grace window
-        if (this.hoveredObjectStageIndex !== -1 && stages[this.hoveredObjectStageIndex]) {
-          const stage = stages[this.hoveredObjectStageIndex];
-          const holdProgress = Math.min(this.objectHoldTimer / 5.0, 1.0);
-          this.updateObjectHoldVisual(stage, holdProgress, this.objectHoldTimer);
-        }
-      } else {
-        if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
-          this.objectHoldTimer = 0;
-          this.hoveredObjectStageIndex = -1;
-          this.hideObjectHoldVisual();
-        }
-      }
-    }
+    this.hoveredObjectStageIndex = hitStageIdx;
   }
 
   // =========================================================================
@@ -1961,7 +1907,7 @@ export class VRRemoteBar {
     }
 
     if (!this.isWindowOpen) {
-      // Direct click on object in 3D scene immediately opens object details
+      // Double-click on object in 3D scene opens object details
       let targetIdx = this.hoveredObjectStageIndex;
       if (targetIdx === -1) {
         const nx = this.currentNormX !== undefined ? this.currentNormX : 0.5;
@@ -1974,14 +1920,28 @@ export class VRRemoteBar {
       }
 
       if (targetIdx !== -1) {
-        this.objectHoldTimer = 0;
-        this.hoverGraceTimer = 0;
-        this.hoveredObjectStageIndex = -1;
-        this.hideObjectHoldVisual();
-        if (navigator.vibrate) {
-          try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+        const now = performance.now();
+        const timeSinceLast = now - this.lastClickTime;
+        const sameObject = (targetIdx === this.lastClickStageIdx);
+
+        if (sameObject && timeSinceLast < 500) {
+          // Double-click detected! Open object popup
+          this.lastClickTime = 0;
+          this.lastClickStageIdx = -1;
+          this.hoveredObjectStageIndex = -1;
+          if (navigator.vibrate) {
+            try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+          }
+          this.openObjectPopupWindow(targetIdx);
+        } else {
+          // First click — record it and wait for second
+          this.lastClickTime = now;
+          this.lastClickStageIdx = targetIdx;
         }
-        this.openObjectPopupWindow(targetIdx);
+      } else {
+        // Clicked empty space — reset double-click tracker
+        this.lastClickTime = 0;
+        this.lastClickStageIdx = -1;
       }
     }
   }
