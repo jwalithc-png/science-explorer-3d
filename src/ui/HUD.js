@@ -322,6 +322,7 @@ export class HUD {
 
   renderTelemetryTicker() {
     const stages = this.getActiveStages();
+    const stage = stages[this.currentStageIndex] || stages[0];
     if (this.activeModule === 'heart') {
       return `
         <div class="ticker-item">
