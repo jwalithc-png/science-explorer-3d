@@ -309,16 +309,29 @@ button {
 /* 360° Camera Angles Toolbar */
 .hud-camera-angles-bar {
   position: absolute;
-  top: 120px;
+  top: 116px;
   left: 16px;
   background: var(--panel-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--panel-border);
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   pointer-events: auto;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 25;
+  width: 210px;
+  box-sizing: border-box;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hud-camera-angles-bar.collapsed {
+  padding: 6px 12px;
+  width: auto;
+}
+
+.hud-camera-angles-bar.collapsed .angle-bar-content {
+  display: none;
 }
 
 .angle-bar-title {
@@ -328,6 +341,21 @@ button {
   letter-spacing: 0.05em;
   margin-bottom: 6px;
   text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.hud-camera-angles-bar.collapsed .angle-bar-title {
+  margin-bottom: 0;
+}
+
+.collapse-icon {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  margin-left: 6px;
 }
 
 .angle-btns-grid {
@@ -384,25 +412,28 @@ button {
 /* Telemetry Ticker */
 .hud-telemetry-ticker {
   position: absolute;
-  top: 235px;
+  bottom: 74px;
   left: 16px;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+  max-width: calc(100vw - 310px);
   pointer-events: auto;
+  z-index: 20;
 }
 
 .ticker-item {
-  background: rgba(15, 23, 42, 0.82);
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.75rem;
+  font-size: 0.73rem;
+  white-space: nowrap;
 }
 
 .ticker-dot {
@@ -433,32 +464,41 @@ button {
 /* Stage Navigation Strip (Bottom) */
 .hud-stage-strip {
   display: flex;
-  justify-content: center;
-  gap: 6px;
+  justify-content: flex-start;
+  gap: 5px;
   pointer-events: auto;
   background: var(--panel-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
-  padding: 8px 12px;
+  border-radius: 14px;
+  padding: 6px 10px;
   margin: 0 auto;
-  max-width: 96vw;
-  width: fit-content;
+  max-width: 98vw;
+  width: max-content;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+}
+.hud-stage-strip::-webkit-scrollbar {
+  display: none;
 }
 
 .stage-tab-btn {
   background: rgba(30, 41, 59, 0.6);
   color: var(--text-muted);
-  border-radius: 10px;
-  padding: 8px 12px;
+  border-radius: 8px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
+  gap: 5px;
+  font-size: 0.76rem;
   font-weight: 600;
   border: 1px solid transparent;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .stage-tab-btn:hover {
@@ -475,35 +515,61 @@ button {
 
 .stage-btn-num {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   background: rgba(0, 0, 0, 0.4);
-  padding: 2px 5px;
+  padding: 1px 4px;
   border-radius: 4px;
 }
 
 /* Simulation Parameters Control Panel (Bottom Right) */
 .hud-controls-panel {
   position: absolute;
-  bottom: 84px;
+  bottom: 74px;
   right: 16px;
   background: var(--panel-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
-  padding: 14px 18px;
-  width: 270px;
+  border-radius: 14px;
+  padding: 10px 14px;
+  width: 255px;
+  max-width: min(270px, 90vw);
+  max-height: calc(100vh - 130px);
+  overflow-y: auto;
   pointer-events: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  z-index: 25;
+  box-sizing: border-box;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hud-controls-panel.collapsed {
+  padding: 6px 12px;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+.hud-controls-panel.collapsed .controls-content {
+  display: none;
 }
 
 .controls-title {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: #fda4af;
   letter-spacing: 0.05em;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.hud-controls-panel.collapsed .controls-title {
+  margin-bottom: 0;
 }
 
 .param-slider-group {
@@ -824,55 +890,368 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
+/* Drawer toggle buttons in top actions */
+.btn-drawer-toggle {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+  font-weight: 700;
+}
+.btn-drawer-toggle:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+/* =========================================================================
+   MOBILE LANDSCAPE (Screen Height <= 560px, e.g. phones rotated sideways)
+   ========================================================================= */
+@media (max-height: 560px) {
+  .hud-root {
+    padding: 4px 8px;
+    padding-top: 36px;
+    height: 100vh;
+    box-sizing: border-box;
+  }
+
   .hud-module-selector {
-    padding: 6px 8px;
-    gap: 3px;
+    padding: 3px 6px;
+    gap: 4px;
+    height: 32px;
   }
   .module-tab {
-    padding: 6px 12px;
-    font-size: 0.75rem;
-  }
-  .module-tab-name {
-    display: none;
+    padding: 3px 10px;
+    font-size: 0.72rem;
+    gap: 4px;
   }
   .module-tab-icon {
-    font-size: 1.4rem;
+    font-size: 0.95rem;
   }
-  .hud-root {
-    padding-top: 50px;
+  .module-tab-name {
+    display: inline-block;
+    font-size: 0.68rem;
   }
+
   .hud-top-bar {
-    padding: 8px 12px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    gap: 6px;
+    height: 34px;
+    box-sizing: border-box;
+  }
+  .hud-brand {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .brand-logo {
+    font-size: 16px;
   }
   .brand-title {
-    font-size: 0.95rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
   }
   .brand-tagline {
     display: none;
   }
-  .hud-camera-angles-bar {
-    top: 110px;
-    padding: 6px 10px;
+
+  .hud-sim-speed-bar {
+    padding: 2px 4px;
+    gap: 2px;
+    flex-shrink: 0;
   }
-  .hud-telemetry-ticker {
-    display: none;
+  .btn-sim-control {
+    width: 22px;
+    height: 20px;
+    font-size: 0.68rem;
   }
-  .hud-controls-panel {
-    display: none;
+  .btn-speed {
+    padding: 2px 4px;
+    font-size: 0.62rem;
   }
-  .hud-stage-strip {
-    max-width: 98vw;
+
+  .hud-top-actions {
+    gap: 3px;
     overflow-x: auto;
-    justify-content: flex-start;
+    max-width: calc(100% - 240px);
+    flex-shrink: 1;
+    scrollbar-width: none;
+  }
+  .hud-top-actions::-webkit-scrollbar {
+    display: none;
+  }
+  .btn-primary, .btn-secondary {
+    padding: 3px 7px;
+    font-size: 0.66rem;
+    height: 24px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    gap: 4px;
+  }
+  .btn-icon-only {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  /* 360° Camera Angles Bar on Landscape Phone */
+  .hud-camera-angles-bar {
+    top: 76px;
+    left: 8px;
+    width: 175px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    z-index: 26;
+  }
+  .angle-bar-title {
+    font-size: 0.64rem;
+    margin-bottom: 3px;
+  }
+  .angle-btns-grid {
+    gap: 2px;
+  }
+  .btn-angle {
+    padding: 2px 3px;
+    font-size: 0.6rem;
+    border-radius: 4px;
+  }
+  .angle-toggles {
+    margin-top: 3px;
+    gap: 3px;
+  }
+  .btn-toggle-util {
+    padding: 2px 3px;
+    font-size: 0.6rem;
+    border-radius: 4px;
+  }
+
+  /* Simulation Sliders Panel on Landscape Phone */
+  .hud-controls-panel {
+    top: 76px;
+    bottom: auto;
+    right: 8px;
+    width: 210px;
+    max-width: 230px;
+    max-height: calc(100vh - 124px);
+    padding: 6px 8px;
+    border-radius: 8px;
+    z-index: 26;
+  }
+  .controls-title {
+    font-size: 0.64rem;
+    margin-bottom: 4px;
+  }
+  .param-slider-group {
+    margin-bottom: 4px;
+  }
+  .param-header {
+    font-size: 0.62rem;
+    margin-bottom: 1px;
+  }
+  input[type="range"] {
+    height: 3px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    width: 11px;
+    height: 11px;
+  }
+
+  /* Telemetry on Landscape Phone */
+  .hud-telemetry-ticker {
+    bottom: 40px;
+    left: 8px;
+    max-width: calc(100vw - 230px);
+    gap: 3px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    z-index: 20;
+  }
+  .hud-telemetry-ticker::-webkit-scrollbar {
+    display: none;
+  }
+  .ticker-item {
+    padding: 2px 5px;
+    font-size: 0.62rem;
+    white-space: nowrap;
+    border-radius: 4px;
+  }
+  .ticker-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  /* Stage strip on Landscape Phone */
+  .hud-stage-strip {
+    bottom: 3px;
+    padding: 3px 6px;
+    gap: 3px;
+    border-radius: 8px;
+    max-width: 99vw;
+    z-index: 22;
   }
   .stage-tab-btn {
-    padding: 6px 10px;
+    padding: 2px 5px;
+    font-size: 0.66rem;
+    border-radius: 5px;
+    gap: 3px;
+  }
+  .stage-btn-num {
+    font-size: 0.58rem;
+    padding: 1px 2px;
   }
   .stage-btn-name {
+    font-size: 0.64rem;
+  }
+}
+
+/* =========================================================================
+   MOBILE PORTRAIT & SMALL SCREENS (Width <= 768px, Height > 560px)
+   ========================================================================= */
+@media (max-width: 768px) and (min-height: 561px) {
+  .hud-root {
+    padding: 6px;
+    padding-top: 44px;
+  }
+
+  .hud-module-selector {
+    padding: 4px 6px;
+    gap: 4px;
+    height: 36px;
+  }
+  .module-tab {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    gap: 4px;
+  }
+  .module-tab-name {
+    font-size: 0.7rem;
+  }
+
+  .hud-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 6px 8px;
+    gap: 5px;
+    border-radius: 10px;
+  }
+  .hud-brand {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .brand-logo {
+    font-size: 20px;
+  }
+  .brand-title {
+    font-size: 0.85rem;
+  }
+  .brand-tagline {
     display: none;
   }
+
+  .hud-sim-speed-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .hud-top-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .hud-top-actions::-webkit-scrollbar {
+    display: none;
+  }
+  .btn-primary, .btn-secondary {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Panels in Portrait */
+  .hud-camera-angles-bar {
+    top: 155px;
+    left: 6px;
+    width: 165px;
+    max-width: calc(50vw - 12px);
+    padding: 6px 8px;
+    border-radius: 10px;
+    z-index: 26;
+  }
+  .angle-bar-title {
+    font-size: 0.65rem;
+  }
+  .btn-angle {
+    padding: 2px 4px;
+    font-size: 0.62rem;
+  }
+  .btn-toggle-util {
+    padding: 2px 4px;
+    font-size: 0.62rem;
+  }
+
+  .hud-controls-panel {
+    top: 155px;
+    bottom: auto;
+    right: 6px;
+    width: 180px;
+    max-width: calc(50vw - 12px);
+    max-height: calc(100vh - 230px);
+    padding: 6px 8px;
+    border-radius: 10px;
+    z-index: 26;
+  }
+  .controls-title {
+    font-size: 0.65rem;
+    margin-bottom: 6px;
+  }
+  .param-slider-group {
+    margin-bottom: 5px;
+  }
+  .param-header {
+    font-size: 0.62rem;
+  }
+
+  .hud-telemetry-ticker {
+    bottom: 52px;
+    left: 6px;
+    right: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    z-index: 20;
+  }
+  .hud-telemetry-ticker::-webkit-scrollbar {
+    display: none;
+  }
+  .ticker-item {
+    padding: 3px 6px;
+    font-size: 0.66rem;
+    white-space: nowrap;
+  }
+
+  .hud-stage-strip {
+    bottom: 6px;
+    padding: 4px 6px;
+    max-width: 98vw;
+    gap: 3px;
+    z-index: 22;
+  }
+  .stage-tab-btn {
+    padding: 4px 6px;
+    font-size: 0.7rem;
+    gap: 4px;
+  }
+  .stage-btn-num {
+    font-size: 0.62rem;
+  }
+
   .scientific-panel {
     width: 100vw;
     right: -100vw;

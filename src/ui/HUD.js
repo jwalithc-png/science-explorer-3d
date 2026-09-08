@@ -129,6 +129,12 @@ export class HUD {
             <span class="btn-icon">🎬</span>
             <span class="btn-label" id="tourBtnText">TOUR (A)</span>
           </button>
+          <button class="btn-secondary btn-drawer-toggle" id="btnTopAngleToggle" title="Toggle 360° Camera Angles">
+            <span>🎥 360°</span>
+          </button>
+          <button class="btn-secondary btn-drawer-toggle" id="btnTopControlsToggle" title="Toggle Live Simulation Sliders">
+            <span>⚙️ SLIDERS</span>
+          </button>
           <button class="btn-icon-only ${this.showLabels ? 'active' : ''}" id="btnToggleLabels" title="Toggle 3D Names & Labels (N)">
             <span>🏷️</span>
           </button>
@@ -148,24 +154,29 @@ export class HUD {
       </div>
 
       <!-- 360° Object Rotation & Camera Angles Toolbar (Top Left) -->
-      <div class="hud-camera-angles-bar">
-        <div class="angle-bar-title">🔄 360° VIEW & CAMERA SIDES</div>
-        <div class="angle-btns-grid">
-          <button class="btn-angle" data-side="front" title="Front View (F)">Front</button>
-          <button class="btn-angle" data-side="back" title="Back View (B)">Back</button>
-          <button class="btn-angle" data-side="left" title="Left View (L)">Left</button>
-          <button class="btn-angle" data-side="right" title="Right View">Right</button>
-          <button class="btn-angle" data-side="top" title="Top-Down View (T)">Top</button>
-          <button class="btn-angle" data-side="bottom" title="Bottom View">Bottom</button>
-          <button class="btn-angle" data-side="iso" title="Isometric Angle">3D Iso</button>
+      <div class="hud-camera-angles-bar" id="hudCameraAnglesBar">
+        <div class="angle-bar-title" id="btnCollapseAngles" title="Tap to expand / collapse">
+          <span>🔄 360° VIEW & SIDES</span>
+          <span class="collapse-icon">▲</span>
         </div>
-        <div class="angle-toggles">
-          <button class="btn-toggle-util" id="btnAutoSpin">
-            <span>💫 Auto Spin</span>
-          </button>
-          <button class="btn-toggle-util" id="btnCutaway">
-            <span>🔪 Cross-Section</span>
-          </button>
+        <div class="angle-bar-content" id="angleBarContent">
+          <div class="angle-btns-grid">
+            <button class="btn-angle" data-side="front" title="Front View (F)">Front</button>
+            <button class="btn-angle" data-side="back" title="Back View (B)">Back</button>
+            <button class="btn-angle" data-side="left" title="Left View (L)">Left</button>
+            <button class="btn-angle" data-side="right" title="Right View">Right</button>
+            <button class="btn-angle" data-side="top" title="Top-Down View (T)">Top</button>
+            <button class="btn-angle" data-side="bottom" title="Bottom View">Bottom</button>
+            <button class="btn-angle" data-side="iso" title="Isometric Angle">3D Iso</button>
+          </div>
+          <div class="angle-toggles">
+            <button class="btn-toggle-util" id="btnAutoSpin">
+              <span>💫 Auto Spin</span>
+            </button>
+            <button class="btn-toggle-util" id="btnCutaway">
+              <span>🔪 Cross-Section</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -186,9 +197,14 @@ export class HUD {
       </div>
 
       <!-- Simulation Parameters Drawer -->
-      <div class="hud-controls-panel">
-        <div class="controls-title">⚙️ Live Simulation Controls</div>
-        ${this.renderParamSliders()}
+      <div class="hud-controls-panel" id="hudControlsPanel">
+        <div class="controls-title" id="btnCollapseControls" title="Tap to expand / collapse">
+          <span>⚙️ SIMULATION CONTROLS</span>
+          <span class="collapse-icon">▲</span>
+        </div>
+        <div class="controls-content" id="controlsContent">
+          ${this.renderParamSliders()}
+        </div>
       </div>
 
       <!-- Keyboard Shortcuts & Remote Guide Modal -->
@@ -586,6 +602,32 @@ export class HUD {
         }
       });
     }
+
+    // Collapsible Camera Angles Panel & Top Toggle
+    const btnCollapseAngles = this.container.querySelector('#btnCollapseAngles');
+    const anglesBar = this.container.querySelector('#hudCameraAnglesBar');
+    const toggleAngle = () => {
+      if (!anglesBar) return;
+      anglesBar.classList.toggle('collapsed');
+      const arrow = btnCollapseAngles ? btnCollapseAngles.querySelector('.collapse-icon') : null;
+      if (arrow) arrow.textContent = anglesBar.classList.contains('collapsed') ? '▼' : '▲';
+    };
+    if (btnCollapseAngles) btnCollapseAngles.addEventListener('click', toggleAngle);
+    const btnTopAngleToggle = this.container.querySelector('#btnTopAngleToggle');
+    if (btnTopAngleToggle) btnTopAngleToggle.addEventListener('click', toggleAngle);
+
+    // Collapsible Simulation Controls Panel & Top Toggle
+    const btnCollapseControls = this.container.querySelector('#btnCollapseControls');
+    const controlsPanel = this.container.querySelector('#hudControlsPanel');
+    const toggleControls = () => {
+      if (!controlsPanel) return;
+      controlsPanel.classList.toggle('collapsed');
+      const arrow = btnCollapseControls ? btnCollapseControls.querySelector('.collapse-icon') : null;
+      if (arrow) arrow.textContent = controlsPanel.classList.contains('collapsed') ? '▼' : '▲';
+    };
+    if (btnCollapseControls) btnCollapseControls.addEventListener('click', toggleControls);
+    const btnTopControlsToggle = this.container.querySelector('#btnTopControlsToggle');
+    if (btnTopControlsToggle) btnTopControlsToggle.addEventListener('click', toggleControls);
 
     // Enter VR button
     const btnVR = this.container.querySelector('#btnEnterVR');
