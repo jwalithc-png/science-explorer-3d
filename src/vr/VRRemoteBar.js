@@ -89,6 +89,7 @@ export class VRRemoteBar {
     this.sceneRaycaster = new THREE.Raycaster();
     this.hoveredObjectStageIndex = -1;
     this.objectHoldTimer = 0;
+    this.hoverGraceTimer = 0;
     this.currentNormX = 0.5;
     this.currentNormY = 0.5;
 
@@ -1048,31 +1049,61 @@ export class VRRemoteBar {
     // 2. Section 1: Single Option for 3D XYZ Rotation (Blender-Style Compact Gizmo)
     const isGizmoAttached = (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible);
 
-    this.createSubOptionButton({
-      id: 'obj_btn_axes_toggle',
-      label: isGizmoAttached ? '🎮 3D XYZ Rotation: [ACTIVE ✔]' : '🎮 3D XYZ Rotation: [OFF]',
-      colX: 0,
-      y: 0.08,
-      width: 1.48,
-      height: 0.11,
-      color: isGizmoAttached ? '#22c55e' : '#38bdf8',
-      isActive: isGizmoAttached,
-      onClick: () => {
-        if (this.gizmo3D) {
-          if (this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible) {
-            this.gizmo3D.detach();
-          } else {
+    if (isGizmoAttached) {
+      this.createSubOptionButton({
+        id: 'obj_btn_axes_toggle',
+        label: '🎮 3D XYZ Rotation: [ACTIVE ✔] (Tap to Turn OFF)',
+        colX: -0.28,
+        y: 0.08,
+        width: 0.94,
+        height: 0.11,
+        color: '#22c55e',
+        isActive: true,
+        onClick: () => {
+          if (this.gizmo3D) this.gizmo3D.detach();
+          this.buildWindowContent();
+          this.rebuildActiveButtons();
+        }
+      });
+
+      this.createSubOptionButton({
+        id: 'obj_btn_axes_off',
+        label: '🛑 OFF XYZ Axes',
+        colX: 0.44,
+        y: 0.08,
+        width: 0.48,
+        height: 0.11,
+        color: '#ef4444',
+        isActive: false,
+        onClick: () => {
+          if (this.gizmo3D) this.gizmo3D.detach();
+          this.buildWindowContent();
+          this.rebuildActiveButtons();
+        }
+      });
+    } else {
+      this.createSubOptionButton({
+        id: 'obj_btn_axes_toggle',
+        label: '🎮 3D XYZ Rotation: [Turn ON XYZ Axes]',
+        colX: 0,
+        y: 0.08,
+        width: 1.48,
+        height: 0.11,
+        color: '#38bdf8',
+        isActive: false,
+        onClick: () => {
+          if (this.gizmo3D) {
             const models = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
             const model = models[stageIndex];
             if (model) {
               this.gizmo3D.attach(model);
             }
           }
+          this.buildWindowContent();
+          this.rebuildActiveButtons();
         }
-        this.buildWindowContent();
-        this.rebuildActiveButtons();
-      }
-    });
+      });
+    }
 
     // 3. Section 2: Play Animation + Voiceover + BGM (Stranger Things Soundtrack)
     const isAudioActive = (this.audioPlayingStageIndex === stageIndex);
@@ -1565,28 +1596,49 @@ export class VRRemoteBar {
     const ctx = this.gizmoBadgeCtx;
     ctx.clearRect(0, 0, 440, 90);
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-    ctx.beginPath();
-    ctx.roundRect(4, 4, 432, 82, [18]);
-    ctx.fill();
+    if (axis === 'CLOSE') {
+      ctx.fillStyle = 'rgba(220, 38, 38, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(4, 4, 432, 82, [18]);
+      ctx.fill();
 
-    const colors = { X: '#ef4444', Y: '#10b981', Z: '#3b82f6' };
-    const names = { X: '🔴 X Axis (Pitch)', Y: '🟢 Y Axis (Yaw)', Z: '🔵 Z Axis (Roll)' };
-    const color = colors[axis] || '#facc15';
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
 
-    ctx.lineWidth = 3.5;
-    ctx.strokeStyle = '#facc15';
-    ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🛑 Turn OFF XYZ Axes', 220, 32);
 
-    ctx.fillStyle = color;
-    ctx.font = 'bold 24px "Inter", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(names[axis] || `${axis} Axis`, 220, 32);
+      ctx.fillStyle = '#fef08a';
+      ctx.font = '600 18px "Inter", sans-serif';
+      ctx.fillText('Click to turn off 3D rotation axes', 220, 62);
+    } else {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(4, 4, 432, 82, [18]);
+      ctx.fill();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '600 18px "Inter", sans-serif';
-    ctx.fillText('Move / drag along line to rotate', 220, 62);
+      const colors = { X: '#ef4444', Y: '#10b981', Z: '#3b82f6' };
+      const names = { X: '🔴 X Axis (Pitch)', Y: '🟢 Y Axis (Yaw)', Z: '🔵 Z Axis (Roll)' };
+      const color = colors[axis] || '#facc15';
+
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#facc15';
+      ctx.stroke();
+
+      ctx.fillStyle = color;
+      ctx.font = 'bold 24px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(names[axis] || `${axis} Axis`, 220, 32);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '600 18px "Inter", sans-serif';
+      ctx.fillText('Move / drag along line to rotate', 220, 62);
+    }
 
     this.gizmoBadgeTexture.needsUpdate = true;
   }
@@ -1600,43 +1652,14 @@ export class VRRemoteBar {
   // =========================================================================
   // 8. 3D SCENE OBJECT RAYCASTING & 5-SECOND HOLD DETECTION
   // =========================================================================
-  checkObjectHover(delta) {
-    if (this.isWindowOpen) {
-      if (this.objectHoldTimer > 0) {
-        this.objectHoldTimer = 0;
-        this.hoveredObjectStageIndex = -1;
-        this.hideObjectHoldVisual();
-      }
-      return;
-    }
-
-    // Only suppress hold detection if actively dragging/hovering on an XYZ gizmo axis line
-    if (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible && this.gizmo3D.activeHoverAxis) {
-      if (this.objectHoldTimer > 0) {
-        this.objectHoldTimer = 0;
-        this.hoveredObjectStageIndex = -1;
-        this.hideObjectHoldVisual();
-      }
-      return;
-    }
-
-    const nx = this.currentNormX !== undefined ? this.currentNormX : 0.5;
-    const ny = this.currentNormY !== undefined ? this.currentNormY : 0.5;
-    const ndcX = nx * 2 - 1;
-    const ndcY = -(ny * 2 - 1);
-
-    // Update camera matrix world for accurate ray origin and direction
-    this.camera.updateMatrixWorld(true);
-    this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
-
+  getIntersectedStageIndex(raycaster) {
     const stages = this.getStagesCallback ? this.getStagesCallback() : [];
     const stageModels = this.getStageModelsCallback ? this.getStageModelsCallback() : [];
-    if (!stages || stages.length === 0) return;
+    if (!stages || stages.length === 0) return -1;
 
     let hitStageIdx = -1;
     let bestDist = Infinity;
 
-    // Accurate WORLD camera position (not local 0,0,0 inside cameraRig)
     const camPos = new THREE.Vector3();
     this.camera.getWorldPosition(camPos);
     const worldPos = new THREE.Vector3();
@@ -1674,14 +1697,14 @@ export class VRRemoteBar {
       if (distToCam < 0.01) continue;
 
       const toObjNorm = toObj.clone().normalize();
-      const fwdDot = this.sceneRaycaster.ray.direction.dot(toObjNorm);
+      const fwdDot = raycaster.ray.direction.dot(toObjNorm);
       if (fwdDot <= 0.05) continue; // Behind camera or outside visible field of view
 
       let isHit = false;
 
       // 1. Direct Three.js Mesh Raycast intersection test
       if (targetObj) {
-        const hits = this.sceneRaycaster.intersectObject(targetObj, true);
+        const hits = raycaster.intersectObject(targetObj, true);
         if (hits && hits.length > 0) {
           isHit = true;
         }
@@ -1689,7 +1712,7 @@ export class VRRemoteBar {
 
       // 2. Proximity Cone Hit Test (for easy targeting even on smaller bodies or from afar)
       if (!isHit) {
-        const distToRay = this.sceneRaycaster.ray.distanceToPoint(worldPos);
+        const distToRay = raycaster.ray.distanceToPoint(worldPos);
         const r = st.radius || (st.data && st.data.radius) || (st.vrOffsetDist ? st.vrOffsetDist * 0.38 : 3.5);
         const hitThreshold = Math.max(5.0, r * 2.8, distToCam * 0.12);
         if (distToRay < hitThreshold) {
@@ -1703,12 +1726,52 @@ export class VRRemoteBar {
       }
     }
 
+    return hitStageIdx;
+  }
+
+  checkObjectHover(delta) {
+    if (this.isWindowOpen) {
+      if (this.objectHoldTimer > 0) {
+        this.objectHoldTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
+      }
+      this.hoverGraceTimer = 0;
+      return;
+    }
+
+    // Only suppress hold detection if actively dragging an XYZ gizmo axis line
+    if (this.gizmo3D && this.gizmo3D.isDragging) {
+      if (this.objectHoldTimer > 0) {
+        this.objectHoldTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
+      }
+      this.hoverGraceTimer = 0;
+      return;
+    }
+
+    const nx = this.currentNormX !== undefined ? this.currentNormX : 0.5;
+    const ny = this.currentNormY !== undefined ? this.currentNormY : 0.5;
+    const ndcX = nx * 2 - 1;
+    const ndcY = -(ny * 2 - 1);
+
+    // Update camera matrix world for accurate ray origin and direction
+    this.camera.updateMatrixWorld(true);
+    this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+
+    const stages = this.getStagesCallback ? this.getStagesCallback() : [];
+    if (!stages || stages.length === 0) return;
+
+    const hitStageIdx = this.getIntersectedStageIndex(this.sceneRaycaster);
+
     if (hitStageIdx !== -1) {
+      this.hoverGraceTimer = 0.55; // 550ms grace window for micro-jitter/hand drift
       if (this.hoveredObjectStageIndex === hitStageIdx) {
         this.objectHoldTimer += delta;
       } else {
         this.hoveredObjectStageIndex = hitStageIdx;
-        this.objectHoldTimer = 0.02;
+        this.objectHoldTimer = 0.05;
       }
 
       const stage = stages[hitStageIdx];
@@ -1717,6 +1780,7 @@ export class VRRemoteBar {
 
       if (this.objectHoldTimer >= 5.0) {
         this.objectHoldTimer = 0;
+        this.hoverGraceTimer = 0;
         this.hoveredObjectStageIndex = -1;
         this.hideObjectHoldVisual();
         if (navigator.vibrate) {
@@ -1725,10 +1789,21 @@ export class VRRemoteBar {
         this.openObjectPopupWindow(hitStageIdx);
       }
     } else {
-      if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
-        this.objectHoldTimer = 0;
-        this.hoveredObjectStageIndex = -1;
-        this.hideObjectHoldVisual();
+      // Not intersecting right this instant - apply grace period
+      if (this.hoverGraceTimer > 0) {
+        this.hoverGraceTimer -= delta;
+        // Keep visual and hold timer alive during grace window
+        if (this.hoveredObjectStageIndex !== -1 && stages[this.hoveredObjectStageIndex]) {
+          const stage = stages[this.hoveredObjectStageIndex];
+          const holdProgress = Math.min(this.objectHoldTimer / 5.0, 1.0);
+          this.updateObjectHoldVisual(stage, holdProgress, this.objectHoldTimer);
+        }
+      } else {
+        if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
+          this.objectHoldTimer = 0;
+          this.hoveredObjectStageIndex = -1;
+          this.hideObjectHoldVisual();
+        }
       }
     }
   }
@@ -1802,15 +1877,8 @@ export class VRRemoteBar {
           // Hovering over colored direction line / ring
           this.updateGizmoReticleBadge(hoveredAxis);
 
-          // Clear 5-second object hold so it doesn't pop up over the gizmo
-          if (this.objectHoldTimer > 0 || this.hoveredObjectStageIndex !== -1) {
-            this.objectHoldTimer = 0;
-            this.hoveredObjectStageIndex = -1;
-            this.hideObjectHoldVisual();
-          }
-
-          // Move along the axis line direction rotates the object!
-          if (Math.hypot(deltaX, deltaY) > 0.04) {
+          // Move along the axis line direction rotates the object (except close button)
+          if (hoveredAxis !== 'CLOSE' && Math.hypot(deltaX, deltaY) > 0.04) {
             this.gizmo3D.rotateOnAxis(hoveredAxis, deltaX, deltaY);
           }
         } else {
@@ -1873,15 +1941,48 @@ export class VRRemoteBar {
     }
     if (this.hoveredButton) {
       this.triggerButton(this.hoveredButton);
-    } else if (!this.isWindowOpen && this.hoveredObjectStageIndex !== -1) {
-      const targetIdx = this.hoveredObjectStageIndex;
-      this.objectHoldTimer = 0;
-      this.hoveredObjectStageIndex = -1;
-      this.hideObjectHoldVisual();
-      if (navigator.vibrate) {
-        try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+      return;
+    }
+
+    // Check if clicking Gizmo Close button (✕ OFF XYZ AXES)
+    if (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible) {
+      const nx = this.currentNormX !== undefined ? this.currentNormX : 0.5;
+      const ny = this.currentNormY !== undefined ? this.currentNormY : 0.5;
+      const ndcX = nx * 2 - 1;
+      const ndcY = -(ny * 2 - 1);
+      this.camera.updateMatrixWorld(true);
+      this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+      const hoveredAxis = this.gizmo3D.checkRay(this.sceneRaycaster);
+      if (hoveredAxis === 'CLOSE') {
+        this.gizmo3D.detach();
+        this.hideGizmoReticleBadge();
+        return;
       }
-      this.openObjectPopupWindow(targetIdx);
+    }
+
+    if (!this.isWindowOpen) {
+      // Direct click on object in 3D scene immediately opens object details
+      let targetIdx = this.hoveredObjectStageIndex;
+      if (targetIdx === -1) {
+        const nx = this.currentNormX !== undefined ? this.currentNormX : 0.5;
+        const ny = this.currentNormY !== undefined ? this.currentNormY : 0.5;
+        const ndcX = nx * 2 - 1;
+        const ndcY = -(ny * 2 - 1);
+        this.camera.updateMatrixWorld(true);
+        this.sceneRaycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+        targetIdx = this.getIntersectedStageIndex(this.sceneRaycaster);
+      }
+
+      if (targetIdx !== -1) {
+        this.objectHoldTimer = 0;
+        this.hoverGraceTimer = 0;
+        this.hoveredObjectStageIndex = -1;
+        this.hideObjectHoldVisual();
+        if (navigator.vibrate) {
+          try { navigator.vibrate([60, 40, 60]); } catch (e) {}
+        }
+        this.openObjectPopupWindow(targetIdx);
+      }
     }
   }
 

@@ -119,7 +119,12 @@ export class App {
     this.initUI();
 
     // 8b. 3D Blender-Style Colorful XYZ Rotation Gizmo
-    this.gizmo3D = new Gizmo3D(this.sceneManager.scene, this.sceneManager.camera, this.canvas);
+    this.gizmo3D = new Gizmo3D(
+      this.sceneManager.scene,
+      this.sceneManager.camera,
+      this.canvas,
+      (isActive) => this.onGizmoStateChange(isActive)
+    );
     this.navigationController.isGizmoActiveCallback = () => (
       this.gizmo3D &&
       this.gizmo3D.gizmoRoot &&
@@ -228,6 +233,9 @@ export class App {
         }
         return true;
       },
+      onDetachGizmo: () => {
+        if (this.gizmo3D) this.gizmo3D.detach();
+      },
       onEnterVR: () => {
         this.audioManager.init();
         this.audioManager.resume();
@@ -277,6 +285,15 @@ export class App {
         this.switchModule(moduleId);
       }
     });
+  }
+
+  onGizmoStateChange(isActive) {
+    if (this.hud && this.hud.setGizmoActive) {
+      this.hud.setGizmoActive(isActive);
+    }
+    if (this.remoteRelay) {
+      this.remoteRelay.sendMessage({ type: 'gizmoState', active: Boolean(isActive) });
+    }
   }
 
   /**
@@ -496,6 +513,10 @@ export class App {
           this.sceneManager.recenterVR(this.navigationController.getTargetWorldPosition());
         } else if (msg.type === 'switchModule') {
           this.hud.switchModule(msg.moduleId);
+        } else if (msg.type === 'detachGizmo') {
+          if (this.gizmo3D) {
+            this.gizmo3D.detach();
+          }
         } else if (msg.type === 'toggleVRBar') {
           if (this.vrRemoteBar) {
             this.vrRemoteBar.setVisible(!this.vrRemoteBar.panelGroup.visible);
@@ -544,6 +565,11 @@ export class App {
       } else if (e.key.toLowerCase() === 'c' && !e.ctrlKey) {
         // C = Turn OFF / Stop the 3D model rotation
         this.navigationController.stopRotatingModel();
+      } else if (e.key.toLowerCase() === 'x' || e.key === 'Escape') {
+        // X or Escape = Turn OFF 3D XYZ Rotation Axes
+        if (this.gizmo3D && this.gizmo3D.gizmoRoot && this.gizmo3D.gizmoRoot.visible) {
+          this.gizmo3D.detach();
+        }
       } else if (e.key.toLowerCase() === 'a') {
         // A = Toggle 10-stage animated visual tour with Stranger Things soundtrack
         const isPlaying = this.tourController.toggleTour();

@@ -6,10 +6,11 @@ import * as THREE from 'three';
  * Allows free rotation in all directions and viewing from all angles.
  */
 export class Gizmo3D {
-  constructor(scene, camera, domElement) {
+  constructor(scene, camera, domElement, onStateChange = null) {
     this.scene = scene;
     this.camera = camera;
     this.domElement = domElement;
+    this.onStateChange = onStateChange;
 
     this.selectedBody = null;
     this.targetGroup = null;
@@ -37,6 +38,7 @@ export class Gizmo3D {
 
     this.initMaterials();
     this.buildAxisRingsAndLines();
+    this.buildCloseButton();
     this.initDomListeners();
   }
 
@@ -213,6 +215,38 @@ export class Gizmo3D {
     this.hitObjects.push(sprite);
   }
 
+  buildCloseButton() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 80;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.94)';
+    ctx.beginPath();
+    ctx.roundRect(4, 4, 292, 72, [18]);
+    ctx.fill();
+
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✕ OFF XYZ AXES', 150, 40);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+    this.closeBtnSprite = new THREE.Sprite(spriteMat);
+    this.closeBtnSprite.position.set(0, 1.25, 0);
+    this.closeBtnSprite.scale.set(0.68, 0.18, 1);
+    this.closeBtnSprite.renderOrder = 1002;
+    this.closeBtnSprite.userData = { axis: 'CLOSE', isCloseButton: true, isGizmo: true };
+    this.gizmoRoot.add(this.closeBtnSprite);
+    this.hitObjects.push(this.closeBtnSprite);
+  }
+
   // =========================================================================
   // RAYCASTING & HOVER HIGHLIGHTING
   // =========================================================================
@@ -222,10 +256,16 @@ export class Gizmo3D {
     const intersects = raycaster.intersectObjects(this.hitObjects, true);
     if (intersects && intersects.length > 0) {
       for (const hit of intersects) {
-        if (hit.object && hit.object.userData && hit.object.userData.axis) {
-          const axis = hit.object.userData.axis;
-          this.setHoverAxis(axis);
-          return axis;
+        if (hit.object && hit.object.userData) {
+          if (hit.object.userData.isCloseButton) {
+            this.setHoverAxis('CLOSE');
+            return 'CLOSE';
+          }
+          if (hit.object.userData.axis) {
+            const axis = hit.object.userData.axis;
+            this.setHoverAxis(axis);
+            return axis;
+          }
         }
       }
     }
@@ -323,6 +363,7 @@ export class Gizmo3D {
     this.gizmoRoot.visible = true;
     this.continuousSpinAxis = null;
     this.updateTransform();
+    if (this.onStateChange) this.onStateChange(true);
   }
 
   detach() {
@@ -335,6 +376,7 @@ export class Gizmo3D {
     this.continuousSpinAxis = null;
     this.gizmoRoot.visible = false;
     this.updateMaterials();
+    if (this.onStateChange) this.onStateChange(false);
   }
 
   updateTransform() {

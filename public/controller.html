@@ -366,6 +366,7 @@
   <!-- Clean Bottom Utility Controls -->
   <div class="bottom-utility-bar">
     <button class="btn-util btn-mouse-on" id="btnMouseToggle" title="Toggle Mouse Pointer (Spacebar)">🖱️ Mouse: ON (Space)</button>
+    <button class="btn-util" id="btnRemoteDetachGizmo" style="display: none; background: rgba(239, 68, 68, 0.25); border-color: #ef4444; color: #fca5a5;" title="Turn OFF 3D XYZ Rotation Axes (X)">🛑 OFF XYZ Axes (X)</button>
     <button class="btn-util" id="btnTour">🎬 Stranger Things Tour</button>
     <button class="btn-util" id="btnSpin">🔄 Spin Model 360°</button>
     <button class="btn-util" id="btnPause">⏸ Pause / Resume</button>
@@ -445,9 +446,25 @@
             showToast(`Tracking: ${msg.stage ? msg.stage.name : 'Stage ' + msg.stageIndex}`);
           } else if (msg.type === 'mouseState') {
             updateMouseUI(msg.enabled);
+          } else if (msg.type === 'gizmoState') {
+            updateGizmoUI(msg.active);
           }
         } catch(err) {}
       };
+    }
+
+    const btnRemoteDetachGizmo = document.getElementById('btnRemoteDetachGizmo');
+    function updateGizmoUI(active) {
+      if (btnRemoteDetachGizmo) {
+        btnRemoteDetachGizmo.style.display = active ? 'flex' : 'none';
+      }
+    }
+    if (btnRemoteDetachGizmo) {
+      btnRemoteDetachGizmo.addEventListener('click', () => {
+        send({ type: 'detachGizmo' });
+        updateGizmoUI(false);
+        showToast('Turned OFF XYZ Rotation Axes (X)');
+      });
     }
 
     let isMouseEnabled = true;
@@ -678,6 +695,10 @@
       } else if (e.key.toLowerCase() === 'c') {
         send({ type: 'stopRotateModel' });
         showToast('Stopped Rotation');
+      } else if (e.key.toLowerCase() === 'x' || e.key === 'Escape') {
+        send({ type: 'detachGizmo' });
+        updateGizmoUI(false);
+        showToast('Turned OFF XYZ Rotation Axes (X)');
       } else if (e.key.toLowerCase() === 'h') {
         send({ type: 'recenterVR' });
         showToast('Recentered VR Target');

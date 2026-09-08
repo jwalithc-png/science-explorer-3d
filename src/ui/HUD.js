@@ -41,7 +41,9 @@ export class HUD {
     this.onParamChange = options.onParamChange || null;
     this.onModuleSwitch = options.onModuleSwitch || null;
     this.onToggleMouse = options.onToggleMouse || null;
+    this.onDetachGizmo = options.onDetachGizmo || null;
 
+    this.isGizmoActive = false;
     this.isMouseEnabled = true;
     this.activeModule = 'solar';
     this.currentStageIndex = 0;
@@ -113,6 +115,10 @@ export class HUD {
         </div>
 
         <div class="hud-top-actions">
+          <button class="btn-secondary btn-detach-gizmo" id="btnDetachGizmo" style="display: ${this.isGizmoActive ? 'inline-flex' : 'none'}; background: rgba(239, 68, 68, 0.25); border-color: #ef4444; color: #fca5a5;" title="Turn OFF 3D XYZ Rotation Axes (X)">
+            <span class="btn-icon">🛑</span>
+            <span class="btn-label">OFF XYZ (X)</span>
+          </button>
           <button class="btn-secondary ${this.isMouseEnabled ? 'mouse-active' : 'mouse-inactive'}" id="btnToggleMouse" title="Toggle Mouse Pointer ${this.isMouseEnabled ? 'OFF' : 'ON'} (Space)">
             <span class="btn-icon" id="mouseIcon">${this.isMouseEnabled ? '🖱️' : '🚫'}</span>
             <span class="btn-label" id="mouseBtnText">MOUSE: ${this.isMouseEnabled ? 'ON' : 'OFF'}</span>
@@ -592,6 +598,14 @@ export class HUD {
       });
     }
 
+    // Detach 3D Gizmo Button (X)
+    const btnDetachGizmo = this.container.querySelector('#btnDetachGizmo');
+    if (btnDetachGizmo) {
+      btnDetachGizmo.addEventListener('click', () => {
+        if (this.onDetachGizmo) this.onDetachGizmo();
+      });
+    }
+
     // Mouse Pointer Toggle (Space)
     const btnMouse = this.container.querySelector('#btnToggleMouse');
     if (btnMouse) {
@@ -732,6 +746,14 @@ export class HUD {
       txt.textContent = 'MOUSE: OFF';
       if (icon) icon.textContent = '🚫';
       btn.title = 'Toggle Mouse Pointer ON (Space)';
+    }
+  }
+
+  setGizmoActive(isActive) {
+    this.isGizmoActive = Boolean(isActive);
+    const btn = this.container.querySelector('#btnDetachGizmo');
+    if (btn) {
+      btn.style.display = this.isGizmoActive ? 'inline-flex' : 'none';
     }
   }
 
