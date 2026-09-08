@@ -192,6 +192,11 @@ export class App {
         if (this.remoteRelay) {
           this.remoteRelay.sendMessage(msg);
         }
+      },
+      onMouseStateChanged: (enabled) => {
+        if (this.hud && this.hud.setMouseState) {
+          this.hud.setMouseState(enabled);
+        }
       }
     });
 
@@ -216,6 +221,12 @@ export class App {
         this.tourController.stopTour();
         this.hud.setTourState(false);
         this.selectStage(idx);
+      },
+      onToggleMouse: () => {
+        if (this.vrRemoteBar) {
+          return this.vrRemoteBar.toggleMouse();
+        }
+        return true;
       },
       onEnterVR: () => {
         this.audioManager.init();
@@ -445,7 +456,7 @@ export class App {
       onMessage: (msg) => {
         if (msg.type === 'toggleMouse') {
           if (this.vrRemoteBar) {
-            this.vrRemoteBar.toggleMouse(msg.enabled);
+            this.vrRemoteBar.setMouseEnabled(msg.enabled);
           }
         } else if (msg.type === 'remoteMouseMove') {
           if (this.vrRemoteBar && this.vrRemoteBar.isMouseEnabled) {
@@ -513,11 +524,13 @@ export class App {
         this.hud.setTourState(false);
         this.selectStage(9);
       } else if (e.code === 'Space') {
+        if (e.target && e.target.closest && e.target.closest('input, textarea, select')) return;
         e.preventDefault();
+        if (e.repeat) return; // Ignore repeated keydown events while held
         if (this.vrRemoteBar) {
           const isEnabled = this.vrRemoteBar.toggleMouse();
-          if (this.remoteRelay) {
-            this.remoteRelay.sendMessage({ type: 'mouseState', enabled: isEnabled });
+          if (this.hud && this.hud.setMouseState) {
+            this.hud.setMouseState(isEnabled);
           }
         }
       } else if (e.key === 'Tab') {

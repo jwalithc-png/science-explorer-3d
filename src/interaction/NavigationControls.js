@@ -214,7 +214,10 @@ export class NavigationControls {
   }
 
   onKeyDown(e) {
-    if (e.code === 'Space') e.preventDefault();
+    if (e.code === 'Space') {
+      e.preventDefault();
+      return;
+    }
 
     switch (e.code) {
       case 'KeyW':
@@ -237,7 +240,7 @@ export class NavigationControls {
       case 'ArrowRight':
         this.keys.lookRight = true;
         break;
-      case 'Space':
+      case 'KeyE':
         this.keys.up = true;
         break;
       case 'ShiftLeft':
@@ -279,7 +282,7 @@ export class NavigationControls {
       case 'ArrowRight':
         this.keys.lookRight = false;
         break;
-      case 'Space':
+      case 'KeyE':
         this.keys.up = false;
         break;
       case 'ShiftLeft':

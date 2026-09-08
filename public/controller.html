@@ -666,6 +666,7 @@
       if (e.code === 'Space') {
         if (e.target && e.target.closest && e.target.closest('input, textarea')) return;
         e.preventDefault();
+        if (e.repeat) return;
         toggleMousePointer();
       } else if (e.key.toLowerCase() === 'a') {
         isTouring = !isTouring;

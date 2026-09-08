@@ -48,7 +48,8 @@ export class VRRemoteBar {
     getIsModelSpinning,
     getIsPaused,
     getActiveModule,
-    sendRemoteMessage
+    sendRemoteMessage,
+    onMouseStateChanged
   }) {
     this.scene = scene;
     this.camera = camera;
@@ -74,6 +75,7 @@ export class VRRemoteBar {
     this.getIsPaused = getIsPaused;
     this.getActiveModule = getActiveModule;
     this.sendRemoteMessage = sendRemoteMessage;
+    this.onMouseStateChanged = onMouseStateChanged;
 
     // Window & View State ('main3', 'subOptions', or 'objectPopup')
     this.isWindowOpen = false;
@@ -1426,6 +1428,14 @@ export class VRRemoteBar {
 
     this.showMouseStateNotification(this.isMouseEnabled);
 
+    if (this.onMouseStateChanged) {
+      try {
+        this.onMouseStateChanged(this.isMouseEnabled);
+      } catch (err) {
+        console.warn('onMouseStateChanged callback error:', err);
+      }
+    }
+
     if (this.sendRemoteMessage) {
       this.sendRemoteMessage({ type: 'mouseState', enabled: this.isMouseEnabled });
     }
@@ -1877,15 +1887,6 @@ export class VRRemoteBar {
 
   initInputListeners() {
     if (typeof window === 'undefined') return;
-
-    // Spacebar toggles mouse pointer ON / OFF
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') {
-        if (e.target && e.target.closest && e.target.closest('input, textarea')) return;
-        e.preventDefault();
-        this.toggleMouse();
-      }
-    });
 
     const onMove = (clientX, clientY) => {
       if (!this.isMouseEnabled) return;

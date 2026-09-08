@@ -40,7 +40,9 @@ export class HUD {
     this.onCameraSide = options.onCameraSide || null;
     this.onParamChange = options.onParamChange || null;
     this.onModuleSwitch = options.onModuleSwitch || null;
+    this.onToggleMouse = options.onToggleMouse || null;
 
+    this.isMouseEnabled = true;
     this.activeModule = 'solar';
     this.currentStageIndex = 0;
     this.isTourPlaying = false;
@@ -101,7 +103,7 @@ export class HUD {
 
         <!-- Live Simulation Speed & Controls -->
         <div class="hud-sim-speed-bar">
-          <button class="btn-sim-control ${this.isPaused ? 'active' : ''}" id="btnSimPause" title="Pause / Resume Live Simulation (Space)">
+          <button class="btn-sim-control ${this.isPaused ? 'active' : ''}" id="btnSimPause" title="Pause / Resume Live Simulation (P or Click)">
             <span id="txtSimPause">${this.isPaused ? '▶' : '⏸'}</span>
           </button>
           <button class="btn-speed ${this.currentSpeed === 0.5 ? 'active' : ''}" data-speed="0.5">0.5x</button>
@@ -111,6 +113,10 @@ export class HUD {
         </div>
 
         <div class="hud-top-actions">
+          <button class="btn-secondary ${this.isMouseEnabled ? 'mouse-active' : 'mouse-inactive'}" id="btnToggleMouse" title="Toggle Mouse Pointer ${this.isMouseEnabled ? 'OFF' : 'ON'} (Space)">
+            <span class="btn-icon" id="mouseIcon">${this.isMouseEnabled ? '🖱️' : '🚫'}</span>
+            <span class="btn-label" id="mouseBtnText">MOUSE: ${this.isMouseEnabled ? 'ON' : 'OFF'}</span>
+          </button>
           <button class="btn-primary btn-vr" id="btnEnterVR" title="Enter WebXR Immersive VR (Meta Quest / Mobile)">
             <span class="btn-icon">🥽</span>
             <span class="btn-label">ENTER VR</span>
@@ -570,6 +576,17 @@ export class HUD {
       });
     }
 
+    // Mouse Pointer Toggle (Space)
+    const btnMouse = this.container.querySelector('#btnToggleMouse');
+    if (btnMouse) {
+      btnMouse.addEventListener('click', () => {
+        if (this.onToggleMouse) {
+          const enabled = this.onToggleMouse();
+          this.setMouseState(enabled);
+        }
+      });
+    }
+
     // Enter VR button
     const btnVR = this.container.querySelector('#btnEnterVR');
     if (btnVR) {
@@ -652,6 +669,28 @@ export class HUD {
     this.showHelpModal = !this.showHelpModal;
     const modal = this.container.querySelector('#helpModal');
     if (modal) modal.classList.toggle('open', this.showHelpModal);
+  }
+
+  setMouseState(enabled) {
+    this.isMouseEnabled = Boolean(enabled);
+    const btn = this.container.querySelector('#btnToggleMouse');
+    const txt = this.container.querySelector('#mouseBtnText');
+    const icon = this.container.querySelector('#mouseIcon');
+    if (!btn || !txt) return;
+
+    if (this.isMouseEnabled) {
+      btn.classList.add('mouse-active');
+      btn.classList.remove('mouse-inactive');
+      txt.textContent = 'MOUSE: ON';
+      if (icon) icon.textContent = '🖱️';
+      btn.title = 'Toggle Mouse Pointer OFF (Space)';
+    } else {
+      btn.classList.remove('mouse-active');
+      btn.classList.add('mouse-inactive');
+      txt.textContent = 'MOUSE: OFF';
+      if (icon) icon.textContent = '🚫';
+      btn.title = 'Toggle Mouse Pointer ON (Space)';
+    }
   }
 
   bindParamSliders() {
