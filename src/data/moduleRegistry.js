@@ -40,7 +40,21 @@ export const MODULE_REGISTRY = {
     sceneFogColor: 0x160309,
     sceneFogDensity: 0.007,
     tourStepDuration: 12.0
+  },
+  heart: {
+    id: 'heart',
+    name: 'Human Heart',
+    icon: '🫀',
+    brandTitle: 'THE HUMAN HEART 3D: CARDIAC ANATOMY & HEMODYNAMICS',
+    brandTagline: 'Vena Cava ➔ Right Atrium ➔ Tricuspid Valve ➔ Pulmonary Trunk ➔ Lungs ➔ Left Heart ➔ Aorta ➔ Systemic Circulation',
+    colorTheme: '#ef4444',
+    gradientStart: '#ef4444',
+    gradientEnd: '#3b82f6',
+    sceneBackground: 0x120308,
+    sceneFogColor: 0x120308,
+    sceneFogDensity: 0.006,
+    tourStepDuration: 13.0
   }
 };
 
-export const MODULE_ORDER = ['solar', 'photosynthesis', 'reproduction'];
+export const MODULE_ORDER = ['solar', 'photosynthesis', 'reproduction', 'heart'];

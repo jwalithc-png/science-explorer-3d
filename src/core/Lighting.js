@@ -87,6 +87,26 @@ export class Lighting {
           this.stageLights.push(pLight);
         });
       }
+    } else if (moduleId === 'heart') {
+      this.mainLight.color.set(0xfff1f2);
+      this.mainLight.intensity = 2.0;
+      this.mainLight.position.set(20, 60, 50);
+      this.ambientLight.color.set(0xffe4e6);
+      this.ambientLight.intensity = 0.70;
+
+      const stageColors = [
+        0x3b82f6, 0x60a5fa, 0x0284c7, 0x06b6d4, 0xa855f7,
+        0xf43f5e, 0xfb7185, 0xef4444, 0xdc2626, 0xb91c1c
+      ];
+      if (stagePositions) {
+        stagePositions.forEach((pos, idx) => {
+          const color = stageColors[idx] || 0xef4444;
+          const pLight = new THREE.PointLight(color, 2.6, 38, 1.4);
+          pLight.position.set(pos.x, pos.y + 4, pos.z + 2);
+          this.scene.add(pLight);
+          this.stageLights.push(pLight);
+        });
+      }
     }
   }
 

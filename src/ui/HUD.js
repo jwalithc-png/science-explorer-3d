@@ -1,11 +1,12 @@
 import { CONCEPTION_STAGES, CONCEPTION_SIMULATION_PARAMETERS } from '../data/conceptionStages.js';
 import { PHOTOSYNTHESIS_STAGES, SIMULATION_PARAMETERS } from '../data/photosynthesisStages.js';
 import { SOLAR_STAGES, SOLAR_SIMULATION_PARAMETERS } from '../data/solarSystemStages.js';
+import { HEART_STAGES, HEART_SIMULATION_PARAMETERS } from '../data/heartStages.js';
 import { MODULE_REGISTRY, MODULE_ORDER } from '../data/moduleRegistry.js';
 
 /**
  * 2D Glassmorphic Heads-Up Display (HUD) with:
- * 1. Multi-Module Selector (Solar System / Photosynthesis / Reproduction)
+ * 1. Multi-Module Selector (Solar System / Photosynthesis / Reproduction / Human Heart)
  * 2. Live Simulation Controls (Play/Pause, 0.5x, 1x, 2x, 5x speed)
  * 3. 3D Floating Labels Toggle (N)
  * 4. Keyboard Shortcuts & Remote Controls Help Guide Modal (H)
@@ -18,13 +19,15 @@ import { MODULE_REGISTRY, MODULE_ORDER } from '../data/moduleRegistry.js';
 const MODULE_STAGES = {
   solar: SOLAR_STAGES,
   photosynthesis: PHOTOSYNTHESIS_STAGES,
-  reproduction: CONCEPTION_STAGES
+  reproduction: CONCEPTION_STAGES,
+  heart: HEART_STAGES
 };
 
 const MODULE_PARAMS = {
   solar: SOLAR_SIMULATION_PARAMETERS,
   photosynthesis: SIMULATION_PARAMETERS,
-  reproduction: CONCEPTION_SIMULATION_PARAMETERS
+  reproduction: CONCEPTION_SIMULATION_PARAMETERS,
+  heart: HEART_SIMULATION_PARAMETERS
 };
 
 export class HUD {
@@ -319,9 +322,30 @@ export class HUD {
 
   renderTelemetryTicker() {
     const stages = this.getActiveStages();
-    const stage = stages[this.currentStageIndex] || stages[0];
-
-    if (this.activeModule === 'reproduction') {
+    if (this.activeModule === 'heart') {
+      return `
+        <div class="ticker-item">
+          <span class="ticker-dot dot-red"></span>
+          <span class="ticker-label">Cardiac Cycle:</span>
+          <span class="ticker-val" id="valTicker1">${stage.shortName}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-dot dot-purple"></span>
+          <span class="ticker-label">Heart Rate:</span>
+          <span class="ticker-val" id="valTicker2">75 BPM 🫀</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-dot dot-cyan"></span>
+          <span class="ticker-label">Pressure:</span>
+          <span class="ticker-val" id="valTicker3">${stage.telemetry ? (stage.telemetry.atrialPressure || stage.telemetry.rvPressure || stage.telemetry.aorticPressure || '120/80 mmHg') : '120/80 mmHg'}</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-dot dot-green"></span>
+          <span class="ticker-label">Cardiac Output:</span>
+          <span class="ticker-val" id="valTicker4">5.25 L/min</span>
+        </div>
+      `;
+    } else if (this.activeModule === 'reproduction') {
       return `
         <div class="ticker-item">
           <span class="ticker-dot dot-cyan"></span>
@@ -395,7 +419,38 @@ export class HUD {
   }
 
   renderParamSliders() {
-    if (this.activeModule === 'reproduction') {
+    if (this.activeModule === 'heart') {
+      return `
+        <div class="param-slider-group">
+          <div class="param-header">
+            <span>🫀 Heart Rate</span>
+            <span id="txtParam1">75 BPM</span>
+          </div>
+          <input type="range" id="sliderParam1" min="40" max="180" step="5" value="75" data-key="heartRateBPM">
+        </div>
+        <div class="param-slider-group">
+          <div class="param-header">
+            <span>🩸 Systolic Blood Pressure</span>
+            <span id="txtParam2">120 mmHg</span>
+          </div>
+          <input type="range" id="sliderParam2" min="80" max="180" step="5" value="120" data-key="bloodPressureSys">
+        </div>
+        <div class="param-slider-group">
+          <div class="param-header">
+            <span>🌊 Stroke Volume</span>
+            <span id="txtParam3">70 mL</span>
+          </div>
+          <input type="range" id="sliderParam3" min="40" max="120" step="5" value="70" data-key="strokeVolumeML">
+        </div>
+        <div class="param-slider-group">
+          <div class="param-header">
+            <span>⏱️ Simulation Speed</span>
+            <span id="txtParam4">1.0x</span>
+          </div>
+          <input type="range" id="sliderParam4" min="0.2" max="5" step="0.1" value="1.0" data-key="simSpeed">
+        </div>
+      `;
+    } else if (this.activeModule === 'reproduction') {
       return `
         <div class="param-slider-group">
           <div class="param-header">

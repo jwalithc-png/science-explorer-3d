@@ -158,22 +158,22 @@ export class AudioManager {
     noise.start();
   }
 
-  updateHeartbeat(delta, stageIndex, currentBpm = 140) {
+  updateHeartbeat(delta, stageIndex, currentBpm = 75, isHeartModule = false) {
     if (!this.ctx || this.isMuted) return;
     this.bpm = currentBpm;
 
-    // Heartbeat plays prominently on stages 4, 7, 8, 9
-    if (stageIndex >= 3) {
+    // Heartbeat plays continuously across all stages for heart module, or on stages 4+ for reproduction
+    if (isHeartModule || stageIndex >= 3) {
       this.heartbeatTimer += delta;
       const interval = 60.0 / this.bpm;
 
       if (this.heartbeatTimer >= interval) {
         this.heartbeatTimer = 0;
-        this.playHeartbeatBeat(false); // Lub
+        this.playHeartbeatBeat(false); // Lub (S1)
 
-        // Schedule Dub 0.15s later
+        // Schedule Dub 0.14s later
         setTimeout(() => {
-          this.playHeartbeatBeat(true); // Dub
+          this.playHeartbeatBeat(true); // Dub (S2)
         }, 140);
       }
     }

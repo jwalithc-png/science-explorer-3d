@@ -2,11 +2,13 @@ import * as THREE from 'three';
 import { SOLAR_STAGES } from '../data/solarSystemStages.js';
 import { PHOTOSYNTHESIS_STAGES } from '../data/photosynthesisStages.js';
 import { CONCEPTION_STAGES } from '../data/conceptionStages.js';
+import { HEART_STAGES } from '../data/heartStages.js';
 
 const MODULE_STAGES_MAP = {
   solar: SOLAR_STAGES,
   photosynthesis: PHOTOSYNTHESIS_STAGES,
-  reproduction: CONCEPTION_STAGES
+  reproduction: CONCEPTION_STAGES,
+  heart: HEART_STAGES
 };
 
 /**
@@ -443,7 +445,7 @@ export class VRRemoteBar {
     // Window Header
     this.createWindowHeader('🚀 CHOOSE 3D EXPLORATION MODULE', 0, 0.52);
 
-    // 3 Big Selectable Cards
+    // 4 Big Selectable Cards
     const cards = [
       {
         id: 'opt_solar',
@@ -451,7 +453,7 @@ export class VRRemoteBar {
         icon: '☀️',
         title: '1. SOLAR SYSTEM',
         subtitle: '10 Celestial Bodies, Planetary Orbits & Stranger Things Tour',
-        y: 0.25,
+        y: 0.28,
         color: '#38bdf8'
       },
       {
@@ -460,7 +462,7 @@ export class VRRemoteBar {
         icon: '🌿',
         title: '2. PLANT BIOLOGY',
         subtitle: 'Leaf Anatomy, Chloroplast, ATP Synthase & Calvin Cycle',
-        y: 0.01,
+        y: 0.10,
         color: '#22c55e'
       },
       {
@@ -469,8 +471,17 @@ export class VRRemoteBar {
         icon: '👶',
         title: '3. HUMAN REPRODUCTION',
         subtitle: 'Fertilization, Acrosome Fusion, Blastocyst & Embryogenesis',
-        y: -0.23,
+        y: -0.08,
         color: '#f43f5e'
+      },
+      {
+        id: 'opt_heart',
+        modId: 'heart',
+        icon: '🫀',
+        title: '4. HUMAN HEART',
+        subtitle: '10 Cardiac Stages, Conduction System, Valves & Bloodstream',
+        y: -0.26,
+        color: '#ef4444'
       }
     ];
 
@@ -577,7 +588,8 @@ export class VRRemoteBar {
     const modTitles = {
       solar: '☀️ SOLAR SYSTEM — ALL OPTIONS',
       photosynthesis: '🌿 PLANT BIOLOGY — ALL OPTIONS',
-      reproduction: '👶 HUMAN REPRODUCTION — ALL OPTIONS'
+      reproduction: '👶 HUMAN REPRODUCTION — ALL OPTIONS',
+      heart: '🫀 HUMAN HEART — ALL OPTIONS'
     };
     const targetMod = this.selectedModule || (this.getActiveModule ? this.getActiveModule() : 'solar') || 'solar';
     const titleText = modTitles[targetMod] || '3D EXPLORATION OPTIONS';

@@ -31,6 +31,19 @@ import { LivingPhotosynthesisEnvironment } from '../models/LivingPhotosynthesisE
 import { SolarSystemModel } from '../models/SolarSystemModel.js';
 import { LivingCosmicEnvironment } from '../models/LivingCosmicEnvironment.js';
 
+// Human Heart Models & Living Cardiovascular Environment
+import { VenaCavaModel } from '../models/heart/VenaCavaModel.js';
+import { RightAtriumTricuspidModel } from '../models/heart/RightAtriumTricuspidModel.js';
+import { RightVentricleModel } from '../models/heart/RightVentricleModel.js';
+import { PulmonaryArteryModel } from '../models/heart/PulmonaryArteryModel.js';
+import { AlveolarCapillaryGasExchangeModel } from '../models/heart/AlveolarCapillaryGasExchangeModel.js';
+import { PulmonaryVeinsLeftAtriumModel } from '../models/heart/PulmonaryVeinsLeftAtriumModel.js';
+import { MitralValveModel } from '../models/heart/MitralValveModel.js';
+import { LeftVentricleMyocardiumModel } from '../models/heart/LeftVentricleMyocardiumModel.js';
+import { AorticArchModel } from '../models/heart/AorticArchModel.js';
+import { CompleteBeatingHeartModel } from '../models/heart/CompleteBeatingHeartModel.js';
+import { LivingHeartCardiovascularEnvironment } from '../models/LivingHeartCardiovascularEnvironment.js';
+
 // VR, UI & Interaction
 import { WebXRManager } from '../vr/WebXRManager.js';
 import { VRInfoCard } from '../ui/VRInfoCard.js';
@@ -47,6 +60,7 @@ import { Gizmo3D } from '../interaction/Gizmo3D.js';
 import { CONCEPTION_STAGES, CONCEPTION_SIMULATION_PARAMETERS } from '../data/conceptionStages.js';
 import { PHOTOSYNTHESIS_STAGES, SIMULATION_PARAMETERS } from '../data/photosynthesisStages.js';
 import { SOLAR_STAGES, SOLAR_SIMULATION_PARAMETERS } from '../data/solarSystemStages.js';
+import { HEART_STAGES, HEART_SIMULATION_PARAMETERS } from '../data/heartStages.js';
 import { MODULE_REGISTRY } from '../data/moduleRegistry.js';
 
 /**
@@ -73,6 +87,7 @@ export class App {
     this.cosmicEnvironment = null;
     this.photosynthesisEnvironment = null;
     this.solarSystemModel = null;
+    this.heartEnvironment = null;
 
     // 3. 3D Floating Billboard Names & Labels
     this.billboardLabels = new BillboardLabels(this.sceneManager.scene);
@@ -343,6 +358,10 @@ export class App {
       });
       this.solarSystemModel = null;
     }
+    if (this.heartEnvironment) {
+      this.sceneManager.scene.remove(this.heartEnvironment.group);
+      this.heartEnvironment = null;
+    }
 
     // 3. Set scene atmosphere environment
     this.sceneManager.setEnvironment(moduleConfig);
@@ -361,6 +380,10 @@ export class App {
       stages = CONCEPTION_STAGES;
       params = { ...CONCEPTION_SIMULATION_PARAMETERS };
       this.createReproductionModule(stages);
+    } else if (moduleId === 'heart') {
+      stages = HEART_STAGES;
+      params = { ...HEART_SIMULATION_PARAMETERS };
+      this.createHeartModule(stages);
     }
 
     this.simParams = params;
@@ -469,6 +492,25 @@ export class App {
     ];
   }
 
+  createHeartModule(stages) {
+    // 1. Living Heart & Cardiovascular Bloodstream Environment
+    this.heartEnvironment = new LivingHeartCardiovascularEnvironment(this.sceneManager.scene);
+
+    // 2. 10 Connected Cardiac Stage Models
+    this.stageModels = [
+      new VenaCavaModel({ x: -135, y: 0, z: 0 }),
+      new RightAtriumTricuspidModel({ x: -105, y: 0, z: 0 }),
+      new RightVentricleModel({ x: -75, y: 0, z: 0 }),
+      new PulmonaryArteryModel({ x: -45, y: 0, z: 0 }),
+      new AlveolarCapillaryGasExchangeModel({ x: -15, y: 0, z: 0 }),
+      new PulmonaryVeinsLeftAtriumModel({ x: 15, y: 0, z: 0 }),
+      new MitralValveModel({ x: 45, y: 0, z: 0 }),
+      new LeftVentricleMyocardiumModel({ x: 75, y: 0, z: 0 }),
+      new AorticArchModel({ x: 105, y: 0, z: 0 }),
+      new CompleteBeatingHeartModel({ x: 140, y: 0, z: 0 })
+    ];
+  }
+
   initRemoteRelay() {
     this.remoteRelay = new RemoteRelayClient({
       onMessage: (msg) => {
@@ -557,7 +599,7 @@ export class App {
         }
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        const modules = ['solar', 'photosynthesis', 'reproduction'];
+        const modules = ['solar', 'photosynthesis', 'reproduction', 'heart'];
         const nextIdx = (modules.indexOf(this.activeModule) + 1) % modules.length;
         this.hud.switchModule(modules[nextIdx]);
       } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey) {
@@ -683,6 +725,8 @@ export class App {
       this.photosynthesisEnvironment.update(delta, this.simParams);
     } else if (this.activeModule === 'reproduction' && this.humanBodyEnvironment) {
       this.humanBodyEnvironment.update(delta, this.simParams);
+    } else if (this.activeModule === 'heart' && this.heartEnvironment) {
+      this.heartEnvironment.update(delta, this.simParams);
     }
 
     // 5. Update all stage models & celestial orbital revolutions
@@ -722,9 +766,11 @@ export class App {
       this.vrInfoCard.updatePosition(targetPos, this.sceneManager.camera);
     }
 
-    // 8. Update rhythmic audio
-    if (this.activeModule === 'reproduction') {
-      this.audioManager.updateHeartbeat(delta, this.navigationController.currentStageIndex, this.simParams.heartRateBPM);
+    // 8. Update rhythmic audio (continuous Lub-Dub for heart, physiological for reproduction)
+    if (this.activeModule === 'heart') {
+      this.audioManager.updateHeartbeat(delta, this.navigationController.currentStageIndex, this.simParams.heartRateBPM, true);
+    } else if (this.activeModule === 'reproduction') {
+      this.audioManager.updateHeartbeat(delta, this.navigationController.currentStageIndex, this.simParams.heartRateBPM, false);
     }
 
     // 8. Render WebGL / WebXR
