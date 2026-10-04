@@ -10,6 +10,20 @@ export function remoteControlPlugin() {
   return {
     name: 'vite-plugin-remote-control',
     configureServer(server) {
+      // Graceful alias / redirect for controller URL variants (.htm, /controller, etc.)
+      server.middlewares.use((req, res, next) => {
+        try {
+          const parsed = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+          const p = parsed.pathname.toLowerCase();
+          if (p === '/controller.htm' || p === '/controller' || p === '/remote') {
+            res.writeHead(302, { Location: '/controller.html' + (parsed.search || '') });
+            res.end();
+            return;
+          }
+        } catch (e) {}
+        next();
+      });
+
       const wss = new WebSocketServer({ noServer: true });
       const clients = new Set();
 

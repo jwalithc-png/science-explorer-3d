@@ -55,6 +55,7 @@ export class HUD {
     this.currentSpeed = 1.0;
     this.showLabels = true;
     this.showHelpModal = false;
+    this.showRemoteModal = false;
     this.autoRotate360 = false;
     this.crossSectionView = false;
 
@@ -133,6 +134,10 @@ export class HUD {
           <button class="btn-secondary" id="btnDualVR" title="Cardboard / VR Box Dual Screen SBS VR with Gyro">
             <span class="btn-icon">👓</span>
             <span class="btn-label" id="dualVRText">DUAL SCREEN VR</span>
+          </button>
+          <button class="btn-secondary" id="btnShowRemoteModal" title="Open Mobile VR Remote Controller Link & QR Code" style="border-color: #38bdf8; color: #38bdf8;">
+            <span class="btn-icon">📱</span>
+            <span class="btn-label">REMOTE</span>
           </button>
           <button class="btn-secondary" id="btnToggleTour" title="Start Guided Tour (A)">
             <span class="btn-icon">🎬</span>
@@ -314,6 +319,40 @@ export class HUD {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Remote Controller Modal -->
+      <div class="hud-help-modal ${this.showRemoteModal ? 'open' : ''}" id="remoteModal">
+        <div class="help-card" style="max-width: 520px;">
+          <div class="help-header">
+            <div class="help-title">📱 Mobile VR Remote Mouse Controller</div>
+            <button class="help-close-btn" id="btnCloseRemote">✕</button>
+          </div>
+          <div class="help-body" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px 20px;">
+            <p style="font-size: 13px; color: #94a3b8; margin: 0; line-height: 1.5;">
+              Scan the QR code with your phone camera or open the link below in your phone's browser:
+            </p>
+            
+            <div style="background: #ffffff; padding: 10px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); display: inline-block;">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://${window.location.hostname}:3050/controller.html`)}" alt="Remote QR Code" width="180" height="180" style="display: block; border-radius: 6px;" onerror="this.style.display='none'" />
+            </div>
+
+            <div style="width: 100%; display: flex; gap: 8px; justify-content: center; align-items: center;">
+              <input type="text" readonly id="txtRemoteUrl" value="https://${window.location.hostname}:3050/controller.html" style="background: rgba(15, 23, 42, 0.85); border: 1px solid #38bdf8; color: #38bdf8; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 8px 12px; border-radius: 8px; width: 75%; text-align: center;" />
+              <button class="btn-secondary" id="btnCopyRemoteUrl" style="padding: 8px 14px; border-radius: 8px; font-weight: bold; background: #38bdf8; color: #020617; border: none; cursor: pointer;">📋 Copy</button>
+            </div>
+
+            <div style="background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: #fde047; text-align: left; line-height: 1.5; width: 100%;">
+              <strong>⚠️ Mobile Chrome / Safari SSL Notice:</strong><br>
+              Because mobile VR &amp; gyroscope strictly require HTTPS, your phone browser will show a warning (<em>"Your connection is not private"</em>).<br>
+              Simply tap <strong>Advanced</strong> (or <em>Details</em>) ➔ <strong>Proceed to ${window.location.hostname} (unsafe)</strong> to load the controller.
+            </div>
+
+            <a href="https://${window.location.hostname}:3050/controller.html" target="_blank" style="color: #38bdf8; font-size: 13px; text-decoration: underline; font-weight: 600;">
+              Open Controller in new tab (Desktop test) ↗
+            </a>
           </div>
         </div>
       </div>
@@ -612,6 +651,39 @@ export class HUD {
       btnCloseHelp.addEventListener('click', () => {
         this.showHelpModal = false;
         modal.classList.remove('open');
+      });
+    }
+
+    // Remote Modal toggle & Copy
+    const btnShowRemote = this.container.querySelector('#btnShowRemoteModal');
+    const remoteModal = this.container.querySelector('#remoteModal');
+    const btnCloseRemote = this.container.querySelector('#btnCloseRemote');
+    const btnCopyRemoteUrl = this.container.querySelector('#btnCopyRemoteUrl');
+
+    if (btnShowRemote && remoteModal) {
+      btnShowRemote.addEventListener('click', () => {
+        this.showRemoteModal = !this.showRemoteModal;
+        remoteModal.classList.toggle('open', this.showRemoteModal);
+      });
+    }
+
+    if (btnCloseRemote && remoteModal) {
+      btnCloseRemote.addEventListener('click', () => {
+        this.showRemoteModal = false;
+        remoteModal.classList.remove('open');
+      });
+    }
+
+    if (btnCopyRemoteUrl) {
+      btnCopyRemoteUrl.addEventListener('click', () => {
+        const txt = this.container.querySelector('#txtRemoteUrl');
+        if (txt) {
+          navigator.clipboard?.writeText(txt.value).catch(() => {});
+          btnCopyRemoteUrl.textContent = '✅ Copied!';
+          setTimeout(() => {
+            btnCopyRemoteUrl.textContent = '📋 Copy';
+          }, 2000);
+        }
       });
     }
 

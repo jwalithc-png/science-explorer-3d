@@ -42,6 +42,18 @@ Supports full **360° omnidirectional camera & environment navigation**, **per-m
 8. **Fetal Development**: Fetus floating in the amniotic sac with discoid placenta and umbilical vessels.
 9. **Full-Term Child**: Vertex presentation infant with breathing dynamics and placental life-support ready for birth.
 
+### 🫀 Module 4: Human Heart & Cardiovascular System (10 Connected Stages)
+1. **Superior & Inferior Vena Cava**: Deoxygenated venous blood return flowing into the heart.
+2. **Right Atrium & Tricuspid Valve**: Blood reservoir, SA node pacing, and tricuspid valve leaflets opening into the ventricle.
+3. **Right Ventricle & Trabeculae Carneae**: Muscular chamber contraction driving blood upward into pulmonary circulation.
+4. **Pulmonary Artery & Semilunar Valve**: Bifurcated trunk sending deoxygenated blood to the left and right lungs.
+5. **Alveolar-Capillary Gas Exchange**: Microscopic pulmonary capillary plexus where $CO_2$ is expelled and $O_2$ binds to hemoglobin in red blood cells.
+6. **Pulmonary Veins & Left Atrium**: Four oxygen-rich pulmonary veins returning arterial blood to the heart.
+7. **Mitral (Bicuspid) Valve & Chordae Tendineae**: High-pressure dual-leaflet valve anchored by fibrous chords preventing regurgitation.
+8. **Left Ventricle & Thick Myocardium**: Powerful thick myocardium generating systemic systolic blood pressure (120 mmHg).
+9. **Aortic Arch & Systemic Branches**: Brachiocephalic, common carotid, and subclavian arteries distributing oxygenated blood to the entire body.
+10. **Complete Integrated Beating Heart**: Full 4-chamber anatomical 3D heart with rhythmic Lub-Dub cardiac cycle, synchronized valve opening/closing, and pulsing arterial/venous blood cells.
+
 ---
 
 ## 🎮 Complete Control Scheme
@@ -97,19 +109,43 @@ Open `https://<YOUR_PC_IP>:3050/controller.html` on your PC, laptop, or second m
 
 ---
 
-## 🚀 Running the Project
+## 🚀 How to Run on Any Laptop / Device
 
+### Prerequisites:
+- **Node.js**: Version 18 or higher (Download from [nodejs.org](https://nodejs.org/))
+- **Git**: Installed on your system
+
+### 1. Clone the Repository
 ```bash
-# 1. Install dependencies
-npm install
-
-# 2. Run local HTTPS development server with WebSocket Remote Relay
-npm run dev
-
-# 3. Build optimized production bundle
-npm run build
+git clone https://github.com/jwalithc-png/science-explorer-3d.git
+cd science-explorer-3d
 ```
 
-- **Desktop Simulation**: `https://localhost:3050/`
-- **Mobile VR Headset**: `https://<YOUR_LOCAL_IP>:3050/`
-- **Wireless Remote Controller**: `https://<YOUR_LOCAL_IP>:3050/controller.html`
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Run the Development Server
+```bash
+npm run dev
+```
+
+The application will start with HTTPS enabled on port **3050**:
+- 💻 **PC / Laptop Browser**: `https://localhost:3050/`
+- 📱 **Mobile VR Headset (Phone)**: `https://<YOUR_LAPTOP_IP>:3050/`
+- 🎮 **Wireless Touch Controller (Phone/Tablet)**: `https://<YOUR_LAPTOP_IP>:3050/controller.html` *(or `/controller.htm`)*
+
+### 📱 One-Time Note for Mobile Phones:
+Because mobile browsers strictly require **HTTPS** for phone **gyroscope and WebVR**, your phone will show a standard local SSL alert (*"Your connection is not private"*):
+1. Tap **"Advanced"** (or *"Details"*).
+2. Tap **"Proceed to <IP> (unsafe)"** or *"Accept Risk & Continue"*.
+3. The wireless controller and split-screen VR will connect instantly!
+
+---
+
+### 📦 Production Build (Optional)
+```bash
+npm run build
+npm run preview
+```
